@@ -61,7 +61,7 @@ class EmbeddingGenerator:
         # Model-specific configurations
         self.model_configs = {
             "text-embedding-3-small": {"dimensions": 1536, "max_tokens": 8191},
-            "text-embedding-3-large": {"dimensions": 3072, "max_tokens": 8191},
+            "text-embedding-3-large": {"dimensions": 3072, "max_tokens": 8191}, # Preferred
             "text-embedding-ada-002": {"dimensions": 1536, "max_tokens": 8191}
         }
         
@@ -70,6 +70,23 @@ class EmbeddingGenerator:
             self.config = {"dimensions": 1536, "max_tokens": 8191}
         else:
             self.config = self.model_configs[model]
+
+
+    # Add this helper method to EmbeddingGenerator
+#def _tag_relevance(self, chunk_content: str) -> Dict[str, bool]:
+ #   """Tag chunks with relevance flags for fast pre-filtering."""
+  #  text_lower = chunk_content.lower()
+   # return {
+    #    "mentions_fbs": any(t in text_lower for t in ["fbs", "fetal bovine", "fetal calf serum"]),
+     #   "mentions_serum_free": any(t in text_lower for t in 
+      #      ["serum-free", "serum free", "without serum", "no serum"]),
+       # "mentions_xeno_free": any(t in text_lower for t in 
+        #    ["xeno-free", "xeno free", "animal-free", "animal component"]),
+        #"mentions_defined_medium": any(t in text_lower for t in 
+         #   ["defined medium", "chemically defined", "defined media", "cdm"]),
+        #"mentions_media": any(t in text_lower for t in 
+         #   ["medium", "media", "dmem", "rpmi", "mem", "f-12"]),
+    #}
     
     async def generate_embedding(self, text: str) -> List[float]:
         """

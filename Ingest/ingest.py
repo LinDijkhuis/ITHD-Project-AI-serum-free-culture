@@ -292,6 +292,24 @@ class DocumentIngestionPipeline:
             with open(file_path, 'r', encoding='latin-1') as f:
                 return f.read()
     
+    def _read_pdf_document(self, file_path: str) -> str:
+        """Extract text from PDF using pymupdf."""      
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(file_path)
+            full_text = []
+            for page_number in range(len(doc)):
+                page = doc.load_page(page_number)
+                page_text = page.get_text()
+                if page_text.strip():  # Only add if there's text
+                    full_text.append(f"\n--- Page {page_number + 1} ---\n{page_text}")
+            doc.close()
+        except Exception as e:
+            logger.error(f"Failed to extract text from PDF {file_path}: {e}")
+            return ""
+        
+        return "\n".join(full_text)
+
     def _extract_title(self, content: str, file_path: str) -> str:
         """Extract title from document content or filename."""
         # Try to find markdown title
