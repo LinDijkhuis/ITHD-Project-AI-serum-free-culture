@@ -1,5 +1,5 @@
 """
-Main ingestion script for processing markdown documents into vector DB and knowledge graph.
+Main ingestion script for processing markdown documents into vector DB.
 """
 
 import os
@@ -12,12 +12,11 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import argparse
 
-import asyncpg
 from dotenv import load_dotenv
 
 from .chunker import ChunkingConfig, create_chunker, DocumentChunk
 from .embedder import create_embedder
-from .graph_builder import create_graph_builder
+# from .graph_builder import create_graph_builder
 
 # Import agent utilities
 try:
@@ -40,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentIngestionPipeline:
-    """Pipeline for ingesting documents into vector DB and knowledge graph."""
+    """Pipeline for ingesting documents into vector DB."""
     
     def __init__(
         self,
