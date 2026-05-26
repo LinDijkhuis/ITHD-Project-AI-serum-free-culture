@@ -1,251 +1,180 @@
 """
-Knowledge graph builder for extracting entities and relationships.
+Knowledge graph builder for extracting biomedical entities and relationships
+from cell culture research papers.
 """
 
-import os
 import logging
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timezone
-import asyncio
 import re
+import asyncio
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
 
-from graphiti_core import Graphiti
 from dotenv import load_dotenv
 
 from .chunker import DocumentChunk
 
-# Import graph utilities
 try:
     from ..agent.graph_utils import GraphitiClient
 except ImportError:
-    # For direct execution or testing
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from agent.graph_utils import GraphitiClient
 
-# Load environment variables
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 
 class GraphBuilder:
-    """Builds knowledge graph from document chunks."""
-    
+    """Builds a knowledge graph from cell culture research paper chunks."""
+
     def __init__(self):
-        """Initialize graph builder."""
         self.graph_client = GraphitiClient()
         self._initialized = False
-    
+
     async def initialize(self):
-        """Initialize graph client."""
         if not self._initialized:
             await self.graph_client.initialize()
             self._initialized = True
-    
+
     async def close(self):
-        """Close graph client."""
         if self._initialized:
             await self.graph_client.close()
             self._initialized = False
-    
+
     async def add_document_to_graph(
         self,
         chunks: List[DocumentChunk],
         document_title: str,
         document_source: str,
         document_metadata: Optional[Dict[str, Any]] = None,
-        batch_size: int = 3  # Reduced batch size for Graphiti
     ) -> Dict[str, Any]:
         """
-        Add document chunks to the knowledge graph.
-        
-        Args:
-            chunks: List of document chunks
-            document_title: Title of the document
-            document_source: Source of the document
-            document_metadata: Additional metadata
-            batch_size: Number of chunks to process in each batch
-        
+        Add document chunks to the knowledge graph one by one.
+
         Returns:
-            Processing results
+            Dict with episodes_created, total_chunks, and errors.
         """
         if not self._initialized:
             await self.initialize()
-        
+
         if not chunks:
             return {"episodes_created": 0, "errors": []}
-        
-        logger.info(f"Adding {len(chunks)} chunks to knowledge graph for document: {document_title}")
-        logger.info("⚠️ Large chunks will be truncated to avoid Graphiti token limits.")
-        
-        # Check for oversized chunks and warn
-        oversized_chunks = [i for i, chunk in enumerate(chunks) if len(chunk.content) > 6000]
-        if oversized_chunks:
-            logger.warning(f"Found {len(oversized_chunks)} chunks over 6000 chars that will be truncated: {oversized_chunks}")
-        
+
+        logger.info(f"Adding {len(chunks)} chunks to knowledge graph: {document_title}")
+
+        oversized = [i for i, c in enumerate(chunks) if len(c.content) > 6000]
+        if oversized:
+            logger.warning(f"{len(oversized)} chunks exceed 6000 chars and will be truncated: {oversized}")
+
         episodes_created = 0
         errors = []
-        
-        # Process chunks one by one to avoid overwhelming Graphiti
+
         for i, chunk in enumerate(chunks):
             try:
-                # Create episode ID
                 episode_id = f"{document_source}_{chunk.index}_{datetime.now().timestamp()}"
-                
-                # Prepare episode content with size limits
-                episode_content = self._prepare_episode_content(
-                    chunk,
-                    document_title,
-                    document_metadata
-                )
-                
-                # Create source description (shorter)
-                source_description = f"Document: {document_title} (Chunk: {chunk.index})"
-                
-                # Add episode to graph
+                episode_content = self._prepare_episode_content(chunk, document_title)
+
                 await self.graph_client.add_episode(
                     episode_id=episode_id,
                     content=episode_content,
-                    source=source_description,
+                    source=f"Document: {document_title} (Chunk: {chunk.index})",
                     timestamp=datetime.now(timezone.utc),
                     metadata={
                         "document_title": document_title,
                         "document_source": document_source,
                         "chunk_index": chunk.index,
                         "original_length": len(chunk.content),
-                        "processed_length": len(episode_content)
-                    }
+                        "processed_length": len(episode_content),
+                        **(document_metadata or {}),
+                    },
                 )
-                
+
                 episodes_created += 1
-                logger.info(f"✓ Added episode {episode_id} to knowledge graph ({episodes_created}/{len(chunks)})")
-                
-                # Small delay between each episode to reduce API pressure
+                logger.info(f"Added episode {episodes_created}/{len(chunks)}: {episode_id}")
+
                 if i < len(chunks) - 1:
                     await asyncio.sleep(0.5)
-                    
+
             except Exception as e:
-                error_msg = f"Failed to add chunk {chunk.index} to graph: {str(e)}"
+                error_msg = f"Failed to add chunk {chunk.index}: {e}"
                 logger.error(error_msg)
                 errors.append(error_msg)
-                
-                # Continue processing other chunks even if one fails
-                continue
-        
-        result = {
-            "episodes_created": episodes_created,
-            "total_chunks": len(chunks),
-            "errors": errors
-        }
-        
-        logger.info(f"Graph building complete: {episodes_created} episodes created, {len(errors)} errors")
-        return result
-    
-    def _prepare_episode_content(
-        self,
-        chunk: DocumentChunk,
-        document_title: str,
-        document_metadata: Optional[Dict[str, Any]] = None
-    ) -> str:
+
+        logger.info(f"Graph building complete: {episodes_created} episodes, {len(errors)} errors")
+        return {"episodes_created": episodes_created, "total_chunks": len(chunks), "errors": errors}
+
+    def _prepare_episode_content(self, chunk: DocumentChunk, document_title: str) -> str:
         """
-        Prepare episode content with minimal context to avoid token limits.
-        
-        Args:
-            chunk: Document chunk
-            document_title: Title of the document
-            document_metadata: Additional metadata
-        
-        Returns:
-            Formatted episode content (optimized for Graphiti)
+        Truncate chunk to Graphiti's effective token limit (~6000 chars)
+        and prepend a short document tag.
         """
-        # Limit chunk content to avoid Graphiti's 8192 token limit
-        # Estimate ~4 chars per token, keep content under 6000 chars to leave room for processing
-        max_content_length = 6000
-        
+        max_length = 6000
         content = chunk.content
-        if len(content) > max_content_length:
-            # Truncate content but try to end at a sentence boundary
-            truncated = content[:max_content_length]
-            last_sentence_end = max(
-                truncated.rfind('. '),
-                truncated.rfind('! '),
-                truncated.rfind('? ')
-            )
-            
-            if last_sentence_end > max_content_length * 0.7:  # If we can keep 70% and end cleanly
-                content = truncated[:last_sentence_end + 1] + " [TRUNCATED]"
+
+        if len(content) > max_length:
+            truncated = content[:max_length]
+            cut = max(truncated.rfind(". "), truncated.rfind("! "), truncated.rfind("? "))
+            if cut > max_length * 0.7:
+                content = truncated[:cut + 1] + " [TRUNCATED]"
             else:
                 content = truncated + "... [TRUNCATED]"
-            
-            logger.warning(f"Truncated chunk {chunk.index} from {len(chunk.content)} to {len(content)} chars for Graphiti")
-        
-        # Add minimal context (just document title for now)
-        if document_title and len(content) < max_content_length - 100:
-            episode_content = f"[Doc: {document_title[:50]}]\n\n{content}"
-        else:
-            episode_content = content
-        
-        return episode_content
-    
-    def _estimate_tokens(self, text: str) -> int:
-        """Rough estimate of token count (4 chars per token)."""
-        return len(text) // 4
-    
-    def _is_content_too_large(self, content: str, max_tokens: int = 7000) -> bool:
-        """Check if content is too large for Graphiti processing."""
-        return self._estimate_tokens(content) > max_tokens
-    
+            logger.warning(
+                f"Truncated chunk {chunk.index} from {len(chunk.content)} to {len(content)} chars"
+            )
+
+        if document_title and len(content) < max_length - 100:
+            return f"[Doc: {document_title[:50]}]\n\n{content}"
+        return content
+
     async def extract_entities_from_chunks(
         self,
         chunks: List[DocumentChunk],
-        extract_companies: bool = True,
-        extract_technologies: bool = True,
-        extract_people: bool = True
+        extract_suppliers: bool = True,
+        extract_cell_types: bool = True,
+        extract_culture_conditions: bool = True,
+        extract_assay_methods: bool = True,
+        extract_institutions: bool = True,
     ) -> List[DocumentChunk]:
         """
-        Extract entities from chunks and add to metadata.
-        
-        Args:
-            chunks: List of document chunks
-            extract_companies: Whether to extract company names
-            extract_technologies: Whether to extract technology terms
-            extract_people: Whether to extract person names
-        
+        Annotate each chunk's metadata with detected biomedical entities.
+
+        Entity categories:
+          suppliers          — reagent/media vendors (Lonza, Gibco, …)
+          cell_types         — cell lines and primary cell types (CHO, NSC, …)
+          culture_conditions — media classification and key supplements
+          assay_methods      — measurement techniques used (trypan blue, flow cytometry, …)
+          institutions       — research organisations mentioned
+
         Returns:
-            Chunks with entity metadata added
+            The same chunks with an 'entities' key added to their metadata.
         """
-        logger.info(f"Extracting entities from {len(chunks)} chunks")
-        
-        enriched_chunks = []
-        
+        logger.info(f"Extracting biomedical entities from {len(chunks)} chunks")
+        enriched = []
+
         for chunk in chunks:
-            entities = {
-                "companies": [],
-                "technologies": [],
-                "people": [],
-                "locations": []
+            entities: Dict[str, List[str]] = {
+                "suppliers": [],
+                "cell_types": [],
+                "culture_conditions": [],
+                "assay_methods": [],
+                "institutions": [],
             }
-            
+
             content = chunk.content
-            
-            # Extract companies
-            if extract_companies:
-                entities["companies"] = self._extract_companies(content)
-            
-            # Extract technologies
-            if extract_technologies:
-                entities["technologies"] = self._extract_technologies(content)
-            
-            # Extract people
-            if extract_people:
-                entities["people"] = self._extract_people(content)
-            
-            # Extract locations
-            entities["locations"] = self._extract_locations(content)
-            
-            # Create enriched chunk
+
+            if extract_suppliers:
+                entities["suppliers"] = self._extract_suppliers(content)
+            if extract_cell_types:
+                entities["cell_types"] = self._extract_cell_types(content)
+            if extract_culture_conditions:
+                entities["culture_conditions"] = self._extract_culture_conditions(content)
+            if extract_assay_methods:
+                entities["assay_methods"] = self._extract_assay_methods(content)
+            if extract_institutions:
+                entities["institutions"] = self._extract_institutions(content)
+
             enriched_chunk = DocumentChunk(
                 content=chunk.content,
                 index=chunk.index,
@@ -254,207 +183,210 @@ class GraphBuilder:
                 metadata={
                     **chunk.metadata,
                     "entities": entities,
-                    "entity_extraction_date": datetime.now().isoformat()
+                    "entity_extraction_date": datetime.now().isoformat(),
                 },
-                token_count=chunk.token_count
+                token_count=chunk.token_count,
             )
-            
-            # Preserve embedding if it exists
-            if hasattr(chunk, 'embedding'):
+
+            if hasattr(chunk, "embedding"):
                 enriched_chunk.embedding = chunk.embedding
-            
-            enriched_chunks.append(enriched_chunk)
-        
+
+            enriched.append(enriched_chunk)
+
         logger.info("Entity extraction complete")
-        return enriched_chunks
-    
-    def _extract_companies(self, text: str) -> List[str]:
-        """Extract company names from text."""
-        # Known tech companies (extend this list as needed)
-        tech_companies = {
-            "Google", "Microsoft", "Apple", "Amazon", "Meta", "Facebook",
-            "Tesla", "OpenAI", "Anthropic", "Nvidia", "Intel", "AMD",
-            "IBM", "Oracle", "Salesforce", "Adobe", "Netflix", "Uber",
-            "Airbnb", "Spotify", "Twitter", "LinkedIn", "Snapchat",
-            "TikTok", "ByteDance", "Baidu", "Alibaba", "Tencent",
-            "Samsung", "Sony", "Huawei", "Xiaomi", "DeepMind"
+        return enriched
+
+    # ------------------------------------------------------------------
+    # Biomedical entity extractors
+    # ------------------------------------------------------------------
+
+    def _extract_suppliers(self, text: str) -> List[str]:
+        """Reagent and cell culture media suppliers."""
+        suppliers = {
+            "Lonza", "Gibco", "Corning", "Nunc", "Falcon", "BD Biosciences",
+            "Cellgenix", "Novoprotein", "SAFC", "Merck", "Sigma-Aldrich",
+            "ThermoFisher", "Thermo Fisher", "Millipore", "GE Healthcare",
+            "Fujifilm", "Wako", "PeproTech", "Stemcell Technologies",
+            "BioLegend", "R&D Systems", "Invitrogen", "Life Technologies",
         }
-        
-        found_companies = set()
+        found = set()
         text_lower = text.lower()
-        
-        for company in tech_companies:
-            # Case-insensitive search with word boundaries
-            pattern = r'\b' + re.escape(company.lower()) + r'\b'
-            if re.search(pattern, text_lower):
-                found_companies.add(company)
-        
-        return list(found_companies)
-    
-    def _extract_technologies(self, text: str) -> List[str]:
-        """Extract technology terms from text."""
-        tech_terms = {
-            "AI", "artificial intelligence", "machine learning", "ML",
-            "deep learning", "neural network", "LLM", "large language model",
-            "GPT", "transformer", "NLP", "natural language processing",
-            "computer vision", "reinforcement learning", "generative AI",
-            "foundation model", "multimodal", "chatbot", "API",
-            "cloud computing", "edge computing", "quantum computing",
-            "blockchain", "cryptocurrency", "IoT", "5G", "AR", "VR",
-            "autonomous vehicles", "robotics", "automation"
+        for supplier in suppliers:
+            if re.search(r"\b" + re.escape(supplier.lower()) + r"\b", text_lower):
+                found.add(supplier)
+        return sorted(found)
+
+    def _extract_cell_types(self, text: str) -> List[str]:
+        """Cell lines, primary cells, and stem cell types."""
+        cell_types = {
+            "CHO", "CHO-S", "CHO-K1", "HEK293", "HEK293T", "HEK 293",
+            "Vero", "BHK", "BHK-21", "NSC", "MSC", "iPSC", "ESC",
+            "neural stem cells", "mesenchymal stem cells",
+            "induced pluripotent stem cells", "embryonic stem cells",
+            "hematopoietic stem cells", "T cells", "NK cells",
+            "fibroblasts", "keratinocytes", "hepatocytes",
+            "mammalian cells", "human cells", "murine cells",
         }
-        
-        found_terms = set()
+        found = set()
         text_lower = text.lower()
-        
-        for term in tech_terms:
-            if term.lower() in text_lower:
-                found_terms.add(term)
-        
-        return list(found_terms)
-    
-    def _extract_people(self, text: str) -> List[str]:
-        """Extract person names from text."""
-        # Known tech leaders (extend this list as needed)
-        tech_leaders = {
-            "Elon Musk", "Jeff Bezos", "Tim Cook", "Satya Nadella",
-            "Sundar Pichai", "Mark Zuckerberg", "Sam Altman",
-            "Dario Amodei", "Daniela Amodei", "Jensen Huang",
-            "Bill Gates", "Larry Page", "Sergey Brin", "Jack Dorsey",
-            "Reed Hastings", "Marc Benioff", "Andy Jassy"
+        for ct in cell_types:
+            if re.search(r"\b" + re.escape(ct.lower()) + r"\b", text_lower):
+                found.add(ct)
+        return sorted(found)
+
+    def _extract_culture_conditions(self, text: str) -> List[str]:
+        """Media classifications, serum status, and key supplements."""
+        conditions = {
+            "FBS", "FCS", "fetal bovine serum", "fetal calf serum",
+            "serum-free", "serum free", "xeno-free", "xenogeneic-free",
+            "defined medium", "chemically defined", "protein-free",
+            "animal-free", "animal component-free",
+            "basal medium", "complete medium",
+            "suspension culture", "adherent culture", "anchorage-independent",
+            "EGF", "bFGF", "FGF", "IGF", "insulin", "transferrin", "selenium",
+            "B27", "N2 supplement", "knockout serum replacement", "KSR",
+            "L-glutamine", "GlutaMAX",
         }
-        
-        found_people = set()
-        
-        for person in tech_leaders:
-            if person in text:
-                found_people.add(person)
-        
-        return list(found_people)
-    
-    def _extract_locations(self, text: str) -> List[str]:
-        """Extract location names from text."""
-        locations = {
-            "Silicon Valley", "San Francisco", "Seattle", "Austin",
-            "New York", "Boston", "London", "Tel Aviv", "Singapore",
-            "Beijing", "Shanghai", "Tokyo", "Seoul", "Bangalore",
-            "Mountain View", "Cupertino", "Redmond", "Menlo Park"
+        found = set()
+        text_lower = text.lower()
+        for cond in conditions:
+            if re.search(r"\b" + re.escape(cond.lower()) + r"\b", text_lower):
+                found.add(cond)
+        return sorted(found)
+
+    def _extract_assay_methods(self, text: str) -> List[str]:
+        """Viability, proliferation, and characterisation assays."""
+        assays = {
+            "trypan blue", "propidium iodide", "PI staining",
+            "flow cytometry", "FACS", "fluorescence microscopy",
+            "phase contrast microscopy", "bright field microscopy",
+            "MTT assay", "MTS assay", "WST-1", "CCK-8", "alamarBlue",
+            "LDH assay", "BrdU", "Ki67", "EdU incorporation",
+            "ELISA", "Western blot", "immunofluorescence", "ICC", "IHC",
+            "qPCR", "RT-PCR", "RNA sequencing", "transcriptomics",
+            "coulter counter", "hemocytometer", "Vi-CELL", "Cedex",
         }
-        
-        found_locations = set()
-        
-        for location in locations:
-            if location in text:
-                found_locations.add(location)
-        
-        return list(found_locations)
-    
+        found = set()
+        text_lower = text.lower()
+        for assay in assays:
+            if re.search(r"\b" + re.escape(assay.lower()) + r"\b", text_lower):
+                found.add(assay)
+        return sorted(found)
+
+    def _extract_institutions(self, text: str) -> List[str]:
+        """Research institutions and funding bodies."""
+        institutions = {
+            "NIH", "FDA", "EMA", "WHO",
+            "MIT", "Stanford", "Harvard", "Oxford", "Cambridge",
+            "Max Planck", "ETH Zurich", "UC Berkeley", "Caltech",
+            "Johns Hopkins", "Karolinska Institute", "Pasteur Institute", "EMBL",
+            "Wellcome Trust", "BBSRC", "NWO", "DFG",
+        }
+        found = set()
+        for inst in institutions:
+            if inst in text:
+                found.add(inst)
+        return sorted(found)
+
     async def clear_graph(self):
-        """Clear all data from the knowledge graph."""
+        """Remove all data from the knowledge graph."""
         if not self._initialized:
             await self.initialize()
-        
         logger.warning("Clearing knowledge graph...")
         await self.graph_client.clear_graph()
         logger.info("Knowledge graph cleared")
 
 
-class SimpleEntityExtractor:
-    """Simple rule-based entity extractor as fallback."""
-    
+class BiomedicalEntityExtractor:
+    """
+    Lightweight rule-based extractor for quick entity detection
+    without a full Graphiti connection — useful for testing or pre-filtering.
+    """
+
     def __init__(self):
-        """Initialize extractor."""
-        self.company_patterns = [
-            r'\b(?:Google|Microsoft|Apple|Amazon|Meta|Facebook|Tesla|OpenAI)\b',
-            r'\b\w+\s+(?:Inc|Corp|Corporation|Ltd|Limited|AG|SE)\b'
-        ]
-        
-        self.tech_patterns = [
-            r'\b(?:AI|artificial intelligence|machine learning|ML|deep learning)\b',
-            r'\b(?:neural network|transformer|GPT|LLM|NLP)\b',
-            r'\b(?:cloud computing|API|blockchain|IoT|5G)\b'
-        ]
-    
+        self.supplier_pattern = re.compile(
+            r"\b(Lonza|Gibco|Corning|Cellgenix|ThermoFisher|Thermo Fisher|Merck|"
+            r"Sigma-Aldrich|Millipore|PeproTech|Invitrogen|BioLegend)\b",
+            re.IGNORECASE,
+        )
+        self.cell_type_pattern = re.compile(
+            r"\b(CHO(?:-S|-K1)?|HEK293T?|Vero|BHK(?:-21)?|NSC|MSC|iPSC|ESC|"
+            r"neural stem cells?|mesenchymal stem cells?|T cells?|NK cells?)\b",
+            re.IGNORECASE,
+        )
+        self.condition_pattern = re.compile(
+            r"\b(FBS|FCS|fetal bovine serum|serum.free|xeno.free|"
+            r"chemically defined|defined medium|protein.free)\b",
+            re.IGNORECASE,
+        )
+        self.assay_pattern = re.compile(
+            r"\b(trypan blue|flow cytometry|FACS|MTT|LDH|ELISA|BrdU|Ki67|"
+            r"propidium iodide|Vi-CELL|hemocytometer)\b",
+            re.IGNORECASE,
+        )
+
     def extract_entities(self, text: str) -> Dict[str, List[str]]:
-        """Extract entities using patterns."""
-        entities = {
-            "companies": [],
-            "technologies": []
+        """Return deduplicated entity lists for each biomedical category."""
+        return {
+            "suppliers": list(set(self.supplier_pattern.findall(text))),
+            "cell_types": list(set(self.cell_type_pattern.findall(text))),
+            "culture_conditions": list(set(self.condition_pattern.findall(text))),
+            "assay_methods": list(set(self.assay_pattern.findall(text))),
         }
-        
-        # Extract companies
-        for pattern in self.company_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            entities["companies"].extend(matches)
-        
-        # Extract technologies
-        for pattern in self.tech_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            entities["technologies"].extend(matches)
-        
-        # Remove duplicates and clean up
-        entities["companies"] = list(set(entities["companies"]))
-        entities["technologies"] = list(set(entities["technologies"]))
-        
-        return entities
 
 
-# Factory function
 def create_graph_builder() -> GraphBuilder:
-    """Create graph builder instance."""
+    """Create a GraphBuilder instance."""
     return GraphBuilder()
 
 
-# Example usage
 async def main():
-    """Example usage of the graph builder."""
+    """Smoke-test: chunk a sample cell culture abstract and extract entities."""
     from .chunker import ChunkingConfig, create_chunker
-    
-    # Create chunker and graph builder
+
     config = ChunkingConfig(chunk_size=300, use_semantic_splitting=False)
     chunker = create_chunker(config)
     graph_builder = create_graph_builder()
-    
+
     sample_text = """
-    Google's DeepMind has made significant breakthroughs in artificial intelligence,
-    particularly in areas like protein folding prediction with AlphaFold and
-    game-playing AI with AlphaGo. The company continues to invest heavily in
-    transformer architectures and large language models.
-    
-    Microsoft's partnership with OpenAI has positioned them as a leader in
-    the generative AI space. Sam Altman's OpenAI has developed GPT models
-    that Microsoft integrates into Office 365 and Azure cloud services.
+    We evaluated a serum-free, xeno-free medium (Cellgenix GMP Medium) for the
+    expansion of neural stem cells (NSC) isolated from human cortex. Cells were
+    maintained in suspension culture and viability was assessed daily by trypan blue
+    exclusion and flow cytometry using propidium iodide staining.
+
+    After 7 days, NSC cultured in the defined medium showed a viability of 92 ± 3%,
+    comparable to the FBS-containing control (94 ± 2%). Doubling time was 36 h in
+    serum-free conditions versus 32 h with FBS. Morphology was assessed by phase
+    contrast microscopy: cells maintained characteristic neurosphere morphology in
+    both conditions. Lonza and Gibco EGF and bFGF supplements were used at 20 ng/mL.
     """
-    
-    # Chunk the document
-    chunks = chunker.chunk_document(
+
+    chunks = await chunker.chunk_document(
         content=sample_text,
-        title="AI Company Developments",
-        source="example.md"
+        title="NSC expansion in serum-free medium",
+        source="test_abstract.txt",
     )
-    
+
     print(f"Created {len(chunks)} chunks")
-    
-    # Extract entities
+
     enriched_chunks = await graph_builder.extract_entities_from_chunks(chunks)
-    
-    for i, chunk in enumerate(enriched_chunks):
-        print(f"Chunk {i}: {chunk.metadata.get('entities', {})}")
-    
-    # Add to knowledge graph
+
+    for chunk in enriched_chunks:
+        print(f"\nChunk {chunk.index} entities:")
+        for category, values in chunk.metadata.get("entities", {}).items():
+            if values:
+                print(f"  {category}: {values}")
+
     try:
         result = await graph_builder.add_document_to_graph(
             chunks=enriched_chunks,
-            document_title="AI Company Developments",
-            document_source="example.md",
-            document_metadata={"topic": "AI", "date": "2024"}
+            document_title="NSC expansion in serum-free medium",
+            document_source="test_abstract.txt",
+            document_metadata={"cell_type": "NSC", "media_type": "xeno-free"},
         )
-        
-        print(f"Graph building result: {result}")
-        
+        print(f"\nGraph result: {result}")
     except Exception as e:
-        print(f"Graph building failed: {e}")
-    
+        print(f"Graph building failed (Neo4j may not be running): {e}")
     finally:
         await graph_builder.close()
 
