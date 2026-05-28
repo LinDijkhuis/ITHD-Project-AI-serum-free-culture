@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 
 from .chunker import ChunkingConfig, create_chunker, DocumentChunk
 from .embedder import create_embedder
+from .graph_builder import GraphBuilder
 # PDF parser: converts PDF files to structured text with section detection
 from .pdf_parser import parse_pdf, ParsedPaper
 
@@ -69,6 +70,7 @@ class DocumentIngestionPipeline:
         
         self.chunker = create_chunker(self.chunker_config)
         self.embedder = create_embedder()
+        self.graph_builder: Optional[GraphBuilder] = None
         self._initialized = False
 
     async def initialize(self):
@@ -77,13 +79,26 @@ class DocumentIngestionPipeline:
             return
         logger.info("Initializing ingestion pipeline...")
         await initialize_database()
+
+        if self.config.use_knowledge_graph:
+            try:
+                self.graph_builder = GraphBuilder()
+                await self.graph_builder.initialize()
+                logger.info("Knowledge graph initialized")
+            except Exception as e:
+                logger.warning(f"Knowledge graph unavailable, graph building will be skipped: {e}")
+                self.graph_builder = None
+
         self._initialized = True
         logger.info("Ingestion pipeline initialized")
 
     async def close(self):
-        """Close the database connection."""
+        """Close the database connection and knowledge graph client."""
         if self._initialized:
             await close_database()
+            if self.graph_builder is not None:
+                await self.graph_builder.close()
+                self.graph_builder = None
             self._initialized = False
     
     async def ingest_documents(
@@ -255,7 +270,25 @@ class DocumentIngestionPipeline:
         )
         
         logger.info(f"Saved document to PostgreSQL with ID: {document_id}")
-        
+
+        # Build knowledge graph episodes from the embedded chunks
+        episodes_created = 0
+        if self.graph_builder is not None:
+            try:
+                graph_result = await self.graph_builder.add_document_to_graph(
+                    chunks=embedded_chunks,
+                    document_title=document_title,
+                    document_source=document_source,
+                    document_metadata=document_metadata,
+                )
+                episodes_created = graph_result.get("episodes_created", 0)
+                graph_errors = graph_result.get("errors", [])
+                logger.info(f"Added {episodes_created} episodes to knowledge graph")
+                if graph_errors:
+                    logger.warning(f"Graph building had {len(graph_errors)} errors: {graph_errors}")
+            except Exception as e:
+                logger.error(f"Graph building failed for {document_title}: {e}")
+
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
 
         return IngestionResult(
@@ -263,6 +296,7 @@ class DocumentIngestionPipeline:
             title=document_title,
             chunks_created=len(chunks),
             entities_extracted=0,
+            episodes_created=episodes_created,
             processing_time_ms=processing_time,
             errors=[]
         )
@@ -429,6 +463,7 @@ async def main():
     parser.add_argument("--chunk-size", type=int, default=1000, help="Chunk size for splitting documents")
     parser.add_argument("--chunk-overlap", type=int, default=200, help="Chunk overlap size")
     parser.add_argument("--semantic", action="store_true", help="Enable LLM-based semantic chunking (slower, hits rate limits on free tier)")
+    parser.add_argument("--no-graph", action="store_true", help="Skip knowledge graph building (useful if Neo4j is not running)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
@@ -440,6 +475,7 @@ async def main():
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
         use_semantic_chunking=args.semantic,
+        use_knowledge_graph=not args.no_graph,
     )
     
     # Create and run pipeline
@@ -466,6 +502,7 @@ async def main():
         print("="*50)
         print(f"Documents processed: {len(results)}")
         print(f"Total chunks created: {sum(r.chunks_created for r in results)}")
+        print(f"Total graph episodes: {sum(r.episodes_created for r in results)}")
         print(f"Total errors: {sum(len(r.errors) for r in results)}")
         print(f"Total processing time: {total_time:.2f} seconds")
         print()
@@ -473,7 +510,7 @@ async def main():
         # Print individual results
         for result in results:
             status = "OK" if not result.errors else "FAIL"
-            print(f"{status} {result.title}: {result.chunks_created} chunks, {result.entities_extracted} entities")
+            print(f"{status} {result.title}: {result.chunks_created} chunks, {result.episodes_created} graph episodes")
             
             if result.errors:
                 for error in result.errors:

@@ -189,7 +189,8 @@ class IngestionConfig(BaseModel):
     max_chunk_size: int = Field(default=2000, ge=500, le=10000)
     use_semantic_chunking: bool = True
     extract_entities: bool = True
-    
+    use_knowledge_graph: bool = True
+
     @field_validator('chunk_overlap')
     @classmethod
     def validate_overlap(cls, v: int, info) -> int:
@@ -206,6 +207,7 @@ class IngestionResult(BaseModel):
     title: str
     chunks_created: int
     entities_extracted: int
+    episodes_created: int = 0
     processing_time_ms: float
     errors: List[str] = Field(default_factory=list)
 
