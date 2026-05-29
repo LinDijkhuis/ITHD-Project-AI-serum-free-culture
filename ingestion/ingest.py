@@ -1,5 +1,5 @@
 """
-Main ingestion script for processing markdown documents into vector DB and knowledge graph.
+Main ingestion script for processing documents into vector DB and knowledge graph.
 """
 
 import os
@@ -259,24 +259,39 @@ class DocumentIngestionPipeline:
         # Generate embeddings
         embedded_chunks = await self.embedder.embed_chunks(chunks)
         logger.info(f"Generated embeddings for {len(embedded_chunks)} chunks")
-        
+
+        # Annotate chunks with biomedical entities before saving and graph building
+        entities_extracted = 0
+        graph_chunks = embedded_chunks
+        if self.config.extract_entities and self.graph_builder is not None:
+            try:
+                graph_chunks = await self.graph_builder.extract_entities_from_chunks(embedded_chunks)
+                entities_extracted = sum(
+                    sum(len(v) for v in chunk.metadata.get("entities", {}).values())
+                    for chunk in graph_chunks
+                )
+                logger.info(f"Extracted {entities_extracted} entity mentions across {len(graph_chunks)} chunks")
+            except Exception as e:
+                logger.warning(f"Entity extraction failed, proceeding without entities: {e}")
+                graph_chunks = embedded_chunks
+
         # Save to PostgreSQL
         document_id = await self._save_to_postgres(
             document_title,
             document_source,
             document_content,
-            embedded_chunks,
+            graph_chunks,
             document_metadata
         )
-        
+
         logger.info(f"Saved document to PostgreSQL with ID: {document_id}")
 
-        # Build knowledge graph episodes from the embedded chunks
+        # Build knowledge graph episodes from the enriched chunks
         episodes_created = 0
         if self.graph_builder is not None:
             try:
                 graph_result = await self.graph_builder.add_document_to_graph(
-                    chunks=embedded_chunks,
+                    chunks=graph_chunks,
                     document_title=document_title,
                     document_source=document_source,
                     document_metadata=document_metadata,
@@ -295,7 +310,7 @@ class DocumentIngestionPipeline:
             document_id=document_id,
             title=document_title,
             chunks_created=len(chunks),
-            entities_extracted=0,
+            entities_extracted=entities_extracted,
             episodes_created=episodes_created,
             processing_time_ms=processing_time,
             errors=[]
