@@ -131,9 +131,8 @@ class Chunk(BaseModel):
     @field_validator('embedding')
     @classmethod
     def validate_embedding(cls, v: Optional[List[float]]) -> Optional[List[float]]:
-        """Validate embedding is non-empty if provided."""
-        if v is not None and len(v) == 0:
-            raise ValueError("Embedding vector must not be empty")
+        if v is not None and len(v) != 768:
+            raise ValueError("Embedding must have 768 dimensions")
         return v
 
 
@@ -226,6 +225,7 @@ class HealthStatus(BaseModel):
     """Health check status."""
     status: Literal["healthy", "degraded", "unhealthy"]
     database: bool
+    graph_database: bool = False
     llm_connection: bool
     version: str
     timestamp: datetime

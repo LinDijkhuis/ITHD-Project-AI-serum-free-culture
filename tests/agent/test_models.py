@@ -11,7 +11,6 @@ from agent.models import (
     SearchRequest,
     DocumentMetadata,
     ChunkResult,
-    GraphSearchResult,
     SearchResponse,
     ChatResponse,
     StreamDelta,
@@ -162,23 +161,6 @@ class TestResponseModels:
         )
         assert chunk.score == 0.85
     
-    def test_graph_search_result(self):
-        """Test graph search result model."""
-        now = datetime.now()
-        result = GraphSearchResult(
-            fact="Google acquired DeepMind",
-            uuid="test-uuid",
-            valid_at=now.isoformat(),
-            invalid_at=None,
-            source_node_uuid="source-uuid"
-        )
-        
-        assert result.fact == "Google acquired DeepMind"
-        assert result.uuid == "test-uuid"
-        assert result.valid_at == now.isoformat()
-        assert result.invalid_at is None
-        assert result.source_node_uuid == "source-uuid"
-    
     def test_search_response(self):
         """Test search response model."""
         chunk = ChunkResult(
@@ -248,22 +230,22 @@ class TestDatabaseModels:
         chunk = Chunk(
             document_id="doc-123",
             content="Test chunk content",
-            embedding=[0.1, 0.2, 0.3] + [0.0] * 1533,  # 1536 dimensions
+            embedding=[0.1, 0.2, 0.3] + [0.0] * 765,  # 768 dimensions
             chunk_index=0,
             metadata={"position": "start"},
             token_count=50
         )
-        
+
         assert chunk.document_id == "doc-123"
         assert chunk.content == "Test chunk content"
-        assert len(chunk.embedding) == 1536
+        assert len(chunk.embedding) == 768
         assert chunk.chunk_index == 0
         assert chunk.token_count == 50
     
     def test_chunk_embedding_validation(self):
         """Test chunk embedding dimension validation."""
         # Test wrong dimension
-        with pytest.raises(ValueError, match="Embedding must have 1536 dimensions"):
+        with pytest.raises(ValueError, match="Embedding must have 768 dimensions"):
             Chunk(
                 document_id="doc-123",
                 content="Test content",
@@ -364,16 +346,16 @@ class TestConfigurationModels:
             title="Test Document",
             chunks_created=10,
             entities_extracted=25,
-            relationships_created=8,
+            episodes_created=8,
             processing_time_ms=1500.0,
             errors=["Warning: Large document"]
         )
-        
+
         assert result.document_id == "doc-123"
         assert result.title == "Test Document"
         assert result.chunks_created == 10
         assert result.entities_extracted == 25
-        assert result.relationships_created == 8
+        assert result.episodes_created == 8
         assert result.processing_time_ms == 1500.0
         assert len(result.errors) == 1
 
