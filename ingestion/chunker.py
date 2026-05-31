@@ -402,7 +402,7 @@ class SimpleChunker:
         """Initialize simple chunker."""
         self.config = config
 
-    async def chunk_document(
+    def chunk_document(
         self,
         content: str,
         title: str,
@@ -411,9 +411,6 @@ class SimpleChunker:
     ) -> List[DocumentChunk]:
         """
         Chunk document using paragraph-based rules (no LLM calls).
-
-        Made async to match SemanticChunker's interface so both chunkers
-        can be used interchangeably with `await chunker.chunk_document(...)`.
 
         Args:
             content:  Document text
@@ -511,7 +508,7 @@ class SimpleChunker:
         all_chunks: List[DocumentChunk] = []
 
         for section in sections:
-            section_chunks = await self.chunk_document(
+            section_chunks = self.chunk_document(
                 content=section.content,
                 title=title,
                 source=source,
