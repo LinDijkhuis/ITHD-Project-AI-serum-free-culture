@@ -249,7 +249,7 @@ class DocumentIngestionPipeline:
                 title=document_title,
                 chunks_created=0,
                 entities_extracted=0,
-                relationships_created=0,
+                episodes_created=0,
                 processing_time_ms=(datetime.now() - start_time).total_seconds() * 1000,
                 errors=["No chunks created"]
             )

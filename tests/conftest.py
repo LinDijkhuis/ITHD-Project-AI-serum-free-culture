@@ -268,35 +268,6 @@ def mock_vector_search_results():
     ]
 
 
-@pytest.fixture
-def mock_graph_search_results():
-    """Mock graph search results."""
-    from agent.models import GraphSearchResult
-    from datetime import datetime
-    
-    now = datetime.now()
-    
-    return [
-        GraphSearchResult(
-            fact="Google acquired DeepMind in 2014",
-            episodes=[
-                {"id": "ep1", "content": "Acquisition announcement", "source": "news.md"}
-            ],
-            created_at=now,
-            valid_at=now,
-            uuid="fact-1"
-        ),
-        GraphSearchResult(
-            fact="Microsoft partnered with OpenAI",
-            episodes=[
-                {"id": "ep2", "content": "Partnership details", "source": "partnership.md"}
-            ],
-            created_at=now,
-            valid_at=now,
-            uuid="fact-2"
-        )
-    ]
-
 
 @pytest.fixture
 def test_session_data():
