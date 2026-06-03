@@ -204,7 +204,7 @@ class GraphBuilder:
         """Reagent and cell culture media suppliers."""
         suppliers = {
             "Lonza", "Gibco", "Corning", "Nunc", "Falcon", "BD Biosciences",
-            "Cellgenix", "Novoprotein", "SAFC", "Merck", "Sigma-Aldrich",
+            "Cellgenix", "Novoprotein", "SAFC", "Merck", "Sigma Aldrich", "Sigma-Aldrich",
             "ThermoFisher", "Thermo Fisher", "Millipore", "GE Healthcare",
             "Fujifilm", "Wako", "PeproTech", "Stemcell Technologies",
             "BioLegend", "R&D Systems", "Invitrogen", "Life Technologies",
@@ -225,7 +225,9 @@ class GraphBuilder:
             "induced pluripotent stem cells", "embryonic stem cells",
             "hematopoietic stem cells", "T cells", "NK cells",
             "fibroblasts", "keratinocytes", "hepatocytes",
-            "mammalian cells", "human cells", "murine cells",
+            "mammalian cells", "human cells", "murine cells", "PC12", "B104", 
+            "Rat-1", "NIH 3T3", "A549", "MCF-7", "Jurkat", "Rat-2", "HepG2",
+            "H9c2", "NRK-52E", "NRK", "HEK293FT", "HEK293F", "HEK293E", "HEK293A",
         }
         found = set()
         text_lower = text.lower()
@@ -245,7 +247,8 @@ class GraphBuilder:
             "suspension culture", "adherent culture", "anchorage-independent",
             "EGF", "bFGF", "FGF", "IGF", "insulin", "transferrin", "selenium",
             "B27", "N2 supplement", "knockout serum replacement", "KSR",
-            "L-glutamine", "GlutaMAX",
+            "L-glutamine", "GlutaMAX", "NAM", "coating", "culture plastic",
+            "novel approach", "custom medium",
         }
         found = set()
         text_lower = text.lower()
@@ -265,6 +268,9 @@ class GraphBuilder:
             "ELISA", "Western blot", "immunofluorescence", "ICC", "IHC",
             "qPCR", "RT-PCR", "RNA sequencing", "transcriptomics",
             "coulter counter", "hemocytometer", "Vi-CELL", "Cedex",
+            "differentiation", "morphology", "cell growth", "proliferation", 
+            "doubling time", "metabolic activity", "protein expression", 
+            "gene expression", "cell viability", "cell counting", "cell cycle analysis",
         }
         found = set()
         text_lower = text.lower()

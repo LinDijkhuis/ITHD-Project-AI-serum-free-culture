@@ -4,6 +4,7 @@ Main ingestion script for processing documents into vector DB and knowledge grap
 
 import os
 import asyncio
+import inspect
 import logging
 import json
 import glob
@@ -235,12 +236,13 @@ class DocumentIngestionPipeline:
             )
         else:
             # Standard chunking for text files (or PDFs with no detected sections)
-            chunks = await self.chunker.chunk_document(
+            result = self.chunker.chunk_document(
                 content=document_content,
                 title=document_title,
                 source=document_source,
                 metadata=document_metadata,
             )
+            chunks = await result if inspect.isawaitable(result) else result
         
         if not chunks:
             logger.warning(f"No chunks created for {document_title}")
