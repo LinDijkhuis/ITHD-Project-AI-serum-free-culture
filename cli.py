@@ -203,7 +203,7 @@ class AgenticRAGCLI:
             print(f"{Colors.RED}Cannot connect to API. Please ensure the server is running.{Colors.END}")
             return
         
-        print(f"{Colors.GREEN}Ready to chat! Ask me about tech companies and AI initiatives.{Colors.END}\n")
+        print(f"{Colors.GREEN}Ready to chat! Ask me about serum-free cell culture and related research.{Colors.END}\n")
         
         try:
             while True:
