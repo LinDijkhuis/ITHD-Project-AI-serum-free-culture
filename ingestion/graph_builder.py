@@ -228,6 +228,8 @@ class GraphBuilder:
             "mammalian cells", "human cells", "murine cells", "PC12", "B104", 
             "Rat-1", "NIH 3T3", "A549", "MCF-7", "Jurkat", "Rat-2", "HepG2",
             "H9c2", "NRK-52E", "NRK", "HEK293FT", "HEK293F", "HEK293E", "HEK293A",
+            "THP-1", "CACO-2", "C2C12", "Hela", "DAOY", "Daoy", "Be2C", "BE2C", 
+            "Beas2b", "BEAS-2B",  
         }
         found = set()
         text_lower = text.lower()
@@ -248,7 +250,9 @@ class GraphBuilder:
             "EGF", "bFGF", "FGF", "IGF", "insulin", "transferrin", "selenium",
             "B27", "N2 supplement", "knockout serum replacement", "KSR",
             "L-glutamine", "GlutaMAX", "NAM", "coating", "culture plastic",
-            "novel approach", "custom medium",
+            "novel approach", "custom medium", "horse serum", "HS", "gelatin",
+            "collagen", "fibronectin", "vitronectin", "Matrigel", "trypsin", "accutase",
+            "laminin", "poly-L-lysine", "PLL", "poly-D-lysine", "PDL",
         }
         found = set()
         text_lower = text.lower()
@@ -271,6 +275,8 @@ class GraphBuilder:
             "differentiation", "morphology", "cell growth", "proliferation", 
             "doubling time", "metabolic activity", "protein expression", 
             "gene expression", "cell viability", "cell counting", "cell cycle analysis",
+            "proteomics", "metabolomics", "single-cell analysis", "live/dead staining",
+            "transfection efficiency", "reporter assay", "luciferase assay", "apoptosis assay",
         }
         found = set()
         text_lower = text.lower()
@@ -286,7 +292,11 @@ class GraphBuilder:
             "MIT", "Stanford", "Harvard", "Oxford", "Cambridge",
             "Max Planck", "ETH Zurich", "UC Berkeley", "Caltech",
             "Johns Hopkins", "Karolinska Institute", "Pasteur Institute", "EMBL",
-            "Wellcome Trust", "BBSRC", "NWO", "DFG",
+            "Wellcome Trust", "BBSRC", "NWO", "DFG", "Three R Centers", "Horizon 2020",
+            "3R Center", "3Rs Center", "3Rs Research Foundation", "3R Research Foundation",
+            "Ombion", "Cell Culture Company", "CC-Pharming", "Cell Culture Technologies",
+            "Realise", "REALISE", "TPI", "TPI - The Protein Index", "Ncad", 
+            "Ncad - The Cell Culture Company",
         }
         found = set()
         for inst in institutions:

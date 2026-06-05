@@ -82,13 +82,21 @@ class DocumentIngestionPipeline:
         await initialize_database()
 
         if self.config.use_knowledge_graph:
-            try:
-                self.graph_builder = GraphBuilder()
-                await self.graph_builder.initialize()
-                logger.info("Knowledge graph initialized")
-            except Exception as e:
-                logger.warning(f"Knowledge graph unavailable, graph building will be skipped: {e}")
-                self.graph_builder = None
+            neo4j_uri = os.getenv("NEO4J_URI")
+            neo4j_password = os.getenv("NEO4J_PASSWORD")
+            if not neo4j_uri or not neo4j_password:
+                logger.warning(
+                    "NEO4J_URI or NEO4J_PASSWORD not set in .env — "
+                    "skipping knowledge graph. Add them or use --no-graph to suppress this warning."
+                )
+            else:
+                try:
+                    self.graph_builder = GraphBuilder()
+                    await self.graph_builder.initialize()
+                    logger.info("Knowledge graph initialized")
+                except Exception as e:
+                    logger.warning(f"Knowledge graph unavailable, graph building will be skipped: {e}")
+                    self.graph_builder = None
 
         self._initialized = True
         logger.info("Ingestion pipeline initialized")

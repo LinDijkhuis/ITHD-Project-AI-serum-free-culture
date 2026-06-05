@@ -40,12 +40,16 @@ class DatabasePool:
     async def initialize(self):
         """Create connection pool."""
         if not self.pool:
+            is_local = any(h in self.database_url for h in ("localhost", "127.0.0.1"))
+            ssl_setting = None if is_local else "require"
             self.pool = await asyncpg.create_pool(
                 self.database_url,
-                min_size=5,
-                max_size=20,
+                min_size=1,
+                max_size=10,
                 max_inactive_connection_lifetime=300,
-                command_timeout=60
+                command_timeout=60,
+                timeout=30 if is_local else 120,
+                ssl=ssl_setting
             )
             logger.info("Database connection pool initialized")
     
