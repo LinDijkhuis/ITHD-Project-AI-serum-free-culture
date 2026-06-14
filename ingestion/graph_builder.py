@@ -6,6 +6,7 @@ from cell culture research papers.
 import logging
 import re
 import asyncio
+import traceback
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
@@ -100,6 +101,7 @@ class GraphBuilder:
             except Exception as e:
                 error_msg = f"Failed to add chunk {chunk.index}: {e}"
                 logger.error(error_msg)
+                logger.error(traceback.format_exc())
                 errors.append(error_msg)
 
         logger.info(f"Graph building complete: {episodes_created} episodes, {len(errors)} errors")
