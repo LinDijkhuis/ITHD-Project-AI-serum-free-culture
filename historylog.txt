@@ -1,0 +1,24 @@
+Progress: 1/7 documents processed
+Progress: 2/7 documents processed
+Progress: 3/7 documents processed
+Progress: 4/7 documents processed
+Progress: 5/7 documents processed
+Progress: 6/7 documents processed
+Progress: 7/7 documents processed
+
+==================================================
+INGESTION SUMMARY
+==================================================
+Documents processed: 7
+Total chunks created: 150
+Total graph episodes: 0
+Total errors: 0
+Total processing time: 20.30 seconds
+
+OK Ouarda Saib 7, Andrew Scott7, Ian Woods8 and Victoria Hutter1,9*: 28 chunks, 0 graph episodes
+OK 2Laboratory of Tissue Bioengineering, Directory of Metrology Applied to Life Sciences,: 11 chunks, 0 graph episodes
+OK 2214-7500/© 2023 The Authors. Published by Elsevier B.V. This is an open access article under the CC BY license (http://creativecommons.org/licenses/by/4.0/).: 27 chunks, 0 graph episodes
+OK Hang Minh Le,1,2,*,i Lung Tien Nguyen,1,* Diem Huong Hoang,1,2 Trung Quoc Bach,3 Ha Thi Ngoc Nguyen,1,2: 23 chunks, 0 graph episodes
+OK Safety and Environmental Assurance Centre (SEAC), Unilever, Colworth Science Park, Sharnbrook,: 30 chunks, 0 graph episodes
+OK a Animal Welfare Academy of the German Animal Welfare Federation, Neubiberg 85579, Federal Republic of Germany: 1 chunks, 0 graph episodes
+OK Xeno-free alternatives to the use of fetal: 30 chunks, 0 graph episodes

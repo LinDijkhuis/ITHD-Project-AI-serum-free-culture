@@ -1,0 +1,29 @@
+# PostgreSQL database (Neon)
+DATABASE_URL=postgresql://neondb_owner:npg_zkY9NtS7wgbE@ep-winter-wildflower-apym2gsj.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+# LLM — Ollama (local, no API key needed)
+LLM_PROVIDER=ollama
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_CHOICE=llama3.2
+INGESTION_LLM_CHOICE=llama3.2
+
+# Embeddings — Ollama nomic-embed-text (768 dimensions, local)
+# Run: ollama pull nomic-embed-text
+EMBEDDING_PROVIDER=ollama
+EMBEDDING_BASE_URL=http://localhost:11434/v1
+EMBEDDING_API_KEY=ollama
+EMBEDDING_MODEL=nomic-embed-text
+VECTOR_DIMENSION=768
+
+# Neo4j knowledge graph
+# Local: URI is neo4j://127.0.0.1:7687, user is neo4j, 
+# password is what you set in Neo4j Desktop
+NEO4J_URI=neo4j://127.0.0.1:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=SerumFree!8
+
+# Application
+APP_ENV=development
+LOG_LEVEL=INFO
+APP_PORT=8058
