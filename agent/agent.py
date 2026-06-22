@@ -15,10 +15,12 @@ from .providers import get_llm_model
 from .tools import (
     vector_search_tool,
     hybrid_search_tool,
+    entity_search_tool,
     get_document_tool,
     list_documents_tool,
     VectorSearchInput,
     HybridSearchInput,
+    EntitySearchInput,  
     DocumentInput,
     DocumentListInput,
 )
@@ -132,6 +134,52 @@ async def hybrid_search(
             "document_title": r.document_title,
             "document_source": r.document_source,
             "chunk_id": r.chunk_id
+        }
+        for r in results
+    ]
+
+
+@rag_agent.tool
+async def search_by_entity(
+    ctx: RunContext[AgentDependencies],
+    entity_category: str,
+    entity_value: str,
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Find chunks that mention a specific biomedical entity.
+
+    Use this when the question is about a specific supplier, cell type,
+    culture condition, assay method, or institution.
+
+    entity_category must be one of: suppliers, cell_types,
+    culture_conditions, assay_methods, institutions.
+
+    Examples: category='cell_types' value='CHO',
+    category='suppliers' value='name_of_supplier',
+    category='culture_conditions' value='FBS'
+
+    Args:
+        entity_category: The category of entity to filter by
+        entity_value: The specific entity name to search for
+        limit: Maximum number of results to return
+
+    Returns:
+        List of chunks containing that entity
+    """
+    input_data = EntitySearchInput(
+        entity_category=entity_category,
+        entity_value=entity_value,
+        limit=limit
+    )
+    results = await entity_search_tool(input_data)
+    return [
+        {
+            "content": r.content,
+            "document_title": r.document_title,
+            "document_source": r.document_source,
+            "chunk_id": r.chunk_id,
+            "entities": r.metadata.get("entities", {})
         }
         for r in results
     ]

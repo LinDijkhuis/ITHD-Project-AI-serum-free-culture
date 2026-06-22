@@ -455,6 +455,43 @@ async def hybrid_search(
             for row in results
         ]
 
+async def entity_search(
+    entity_category: str,
+    entity_value: str,
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    async with db_pool.acquire() as conn:
+        results = await conn.fetch(
+            """
+            SELECT 
+                c.id AS chunk_id,
+                c.document_id,
+                c.content,
+                c.metadata,
+                d.title AS document_title,
+                d.source AS document_source
+            FROM chunks c
+            JOIN documents d ON c.document_id = d.id
+            WHERE c.metadata->'entities'->$1 @> $2::jsonb
+            ORDER BY d.created_at DESC
+            LIMIT $3
+            """,
+            entity_category,
+            json.dumps([entity_value]),
+            limit
+        )
+        return [
+            {
+                "chunk_id": row["chunk_id"],
+                "document_id": row["document_id"],
+                "content": row["content"],
+                "metadata": json.loads(row["metadata"]),
+                "document_title": row["document_title"],
+                "document_source": row["document_source"]
+            }
+            for row in results
+        ]
+
 
 # Chunk Management Functions
 async def get_document_chunks(document_id: str) -> List[Dict[str, Any]]:

@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from .db_utils import (
     vector_search,
     hybrid_search,
+    entity_search,
     get_document,
     list_documents,
     get_document_chunks
@@ -64,6 +65,36 @@ class HybridSearchInput(BaseModel):
     query: str = Field(..., description="Search query")
     limit: int = Field(default=10, description="Maximum number of results")
     text_weight: float = Field(default=0.3, description="Weight for text similarity (0-1)")
+
+
+class EntitySearchInput(BaseModel):
+    entity_category: str = Field(..., description="One of: suppliers, cell_types, culture_conditions, assay_methods, institutions")
+    entity_value: str = Field(..., description="Entity to search for, e.g. 'CHO', 'Lonza', 'FBS'")
+    limit: int = Field(default=10, description="Maximum number of results")
+
+
+async def entity_search_tool(input_data: EntitySearchInput) -> List[ChunkResult]:
+    try:
+        results = await entity_search(
+            entity_category=input_data.entity_category,
+            entity_value=input_data.entity_value,
+            limit=input_data.limit
+        )
+        return [
+            ChunkResult(
+                chunk_id=str(r["chunk_id"]),
+                document_id=str(r["document_id"]),
+                content=r["content"],
+                score=1.0,
+                metadata=r["metadata"],
+                document_title=r["document_title"],
+                document_source=r["document_source"]
+            )
+            for r in results
+        ]
+    except Exception as e:
+        logger.error(f"Entity search failed: {e}")
+        return []
 
 
 class DocumentInput(BaseModel):
