@@ -21,6 +21,7 @@ CREATE TABLE documents (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE UNIQUE INDEX idx_documents_source ON documents (source);
 CREATE INDEX idx_documents_metadata ON documents USING GIN (metadata);
 CREATE INDEX idx_documents_created_at ON documents (created_at DESC);
 
@@ -35,7 +36,7 @@ CREATE TABLE chunks (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 1);
+CREATE INDEX idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
 CREATE INDEX idx_chunks_document_id ON chunks (document_id);
 CREATE INDEX idx_chunks_chunk_index ON chunks (document_id, chunk_index);
 CREATE INDEX idx_chunks_content_trgm ON chunks USING GIN (content gin_trgm_ops);

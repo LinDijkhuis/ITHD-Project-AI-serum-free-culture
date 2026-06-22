@@ -172,6 +172,7 @@ class DocumentIngestionPipeline:
         logger.info(f"Ingestion complete: {len(results)} documents, {total_chunks} chunks, {total_errors} errors")
         
         return results
+
     
     async def _ingest_single_document(self, file_path: str) -> IngestionResult:
         """
@@ -195,6 +196,23 @@ class DocumentIngestionPipeline:
         """
         start_time = datetime.now()
         document_source = os.path.relpath(file_path, self.documents_folder)
+        
+        async with db_pool.acquire() as conn:
+            existing = await conn.fetchval(
+                "SELECT id FROM documents WHERE source = $1", document_source
+            )
+            if existing:
+                logger.info(f"Skipping already-ingested document: {document_source}")
+                return IngestionResult(
+                    document_id=str(existing),
+                    title=os.path.basename(file_path),
+                    chunks_created=0,
+                    entities_extracted=0,
+                    episodes_created=0,
+                    processing_time_ms=0,
+                    errors=[]
+                )   
+
 
         # ---- Branch: PDF vs plain text ----
         is_pdf = file_path.lower().endswith(".pdf")
