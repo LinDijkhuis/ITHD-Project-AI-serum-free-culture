@@ -46,7 +46,7 @@ class DocumentIngestionPipeline:
     def __init__(
         self,
         config: IngestionConfig,
-        documents_folder: str = "documents",
+        documents_folder: str = "source_papers",
         clean_before_ingest: bool = False
     ):
         """
@@ -483,7 +483,7 @@ class DocumentIngestionPipeline:
 async def main():
     """Main function for running ingestion."""
     parser = argparse.ArgumentParser(description="Ingest PDF/markdown documents into the vector database")
-    parser.add_argument("--documents", "-d", default="documents", help="Documents folder path")
+    parser.add_argument("--documents", "-d", default="source_papers", help="Documents folder path")
     parser.add_argument("--clean", "-c", action="store_true", help="Clean existing data before ingestion")
     parser.add_argument("--chunk-size", type=int, default=1000, help="Chunk size for splitting documents")
     parser.add_argument("--chunk-overlap", type=int, default=200, help="Chunk overlap size")
