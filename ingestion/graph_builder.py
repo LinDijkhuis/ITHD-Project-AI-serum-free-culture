@@ -3,6 +3,7 @@ Knowledge graph builder for extracting biomedical entities and relationships
 from cell culture research papers.
 """
 
+import os
 import logging
 import re
 import asyncio
@@ -95,8 +96,11 @@ class GraphBuilder:
                 episodes_created += 1
                 logger.info(f"Added episode {episodes_created}/{len(chunks)}: {episode_id}")
 
+                
                 if i < len(chunks) - 1:
-                    await asyncio.sleep(0.5)
+                    base_url = os.getenv("LLM_BASE_URL", "")
+                    if "localhost" not in base_url and "127.0.0.1" not in base_url:
+                        await asyncio.sleep(0.5)
 
             except Exception as e:
                 error_msg = f"Failed to add chunk {chunk.index}: {e}"
