@@ -76,6 +76,11 @@ class EmbeddingGenerator:
         # API key used only for direct Gemini calls
         self._gemini_api_key = os.getenv("EMBEDDING_API_KEY", "")
 
+        _base_url = os.getenv("EMBEDDING_BASE_URL", "")
+        # Determine if we are running in a cloud environment (not localhost)
+        # Change based on embeddings_base_url to detect cloud vs local. If not set, assume cloud.
+        self._is_cloud = not any(h in _base_url for h in ("localhost", "127.0.0.1", "::1"))
+
     # ------------------------------------------------------------------
     # Internal helpers: Gemini native REST API
     # ------------------------------------------------------------------
@@ -230,8 +235,9 @@ class EmbeddingGenerator:
                 
                 embedding = await self.generate_embedding(text)
                 embeddings.append(embedding)
-                # 0.7s between calls → ~85 req/min, safely below the 100 RPM free-tier limit
-                await asyncio.sleep(0.7)
+                # 0.7s between calls → ~85 req/min, safely below the 100 RPM free-tier limit. Skipped for local models.
+                if self._is_cloud:
+                    await asyncio.sleep(0.7)
                 
             except Exception as e:
                 logger.error(f"Failed to embed text: {e}")
