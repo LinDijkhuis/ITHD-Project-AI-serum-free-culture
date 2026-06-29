@@ -52,7 +52,7 @@ if ! command -v ollama &> /dev/null; then
 fi
 
 ollama pull nomic-embed-text
-ollama pull qwen2.5:7b
+ollama pull qwen3:32b
 
 echo ""
 echo "=== Setup complete! ==="
