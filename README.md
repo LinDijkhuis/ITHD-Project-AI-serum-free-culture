@@ -1,6 +1,8 @@
-# Agentic RAG with Knowledge Graph
+# Agentic RAG for Serum-Free Cell Culture Research
 
-Agentic knowledge retrieval redefined with an AI agent system that combines traditional RAG (vector search) with knowledge graph capabilities to analyze and provide insights about big tech companies and their AI initiatives. The system uses PostgreSQL with pgvector for semantic search and Neo4j with Graphiti for temporal knowledge graphs. The goal is to create Agentic RAG at its finest.
+An AI agent system that combines semantic search with knowledge graph capabilities to analyse scientific literature on serum-free and xeno-free cell culture. Ask plain-English questions about media formulations, cell viability, doubling times, and supplier comparisons and receive answers backed by citations from your own PDF library.
+
+The system retrieves relevant passages from your PDFs first, then asks the AI to write an answer using only those passages, which is why it can cite specific papers and DOIs instead of guessing.
 
 Built with:
 
@@ -14,9 +16,9 @@ Built with:
 
 This system includes three main components:
 
-1. **Document Ingestion Pipeline**: Processes markdown documents using semantic chunking and builds both vector embeddings and knowledge graph relationships
-2. **AI Agent Interface**: A conversational agent powered by Pydantic AI that can search across both vector database and knowledge graph
-3. **Streaming API**: FastAPI backend with real-time streaming responses and comprehensive search capabilities
+1. **Document Ingestion Pipeline**: Reads scientific PDF files, detects paper sections (Abstract, Introduction, Methods, Results, Discussion, References), chunks the text intelligently, extracts biomedical entities (cell types, suppliers, culture conditions, assay methods), and builds both vector embeddings and knowledge graph relationships
+2. **AI Agent Interface**: A conversational agent powered by Pydantic AI that searches across the vector database using semantic similarity, keyword matching, and entity-targeted lookup, then writes cited answers
+3. **Streaming API**: FastAPI backend with real-time streaming responses and direct search endpoints
 
 ## Prerequisites
 
@@ -27,33 +29,53 @@ This system includes three main components:
 
 ## Installation
 
-### 1. Set up a virtual environment
+### Option A: Automated setup (Linux only)
+
+On Linux, `setup.sh` handles all installation steps in one command:
 
 ```bash
-# Create and activate virtual environment
-python -m venv venv       # python3 on Linux
+chmod +x setup.sh
+./setup.sh
+```
+
+This script will:
+1. Create a Python virtual environment and install all dependencies
+2. Run `setup_db.py` to create the PostgreSQL schema on Neon
+3. Install Docker (if not present) and start a Neo4j container
+4. Install Ollama and pull the `nomic-embed-text` and `qwen3:32b` models
+
+After it finishes, activate the environment with `source venv/bin/activate` and skip to [step 5 (Configure environment variables)](#5-configure-environment-variables).
+
+> **Note:** `setup.sh` uses `sudo apt` and Docker, so it is intended for Linux (Ubuntu/Debian). On Windows or macOS follow Option B below.
+
+---
+
+### Option B: Manual setup
+
+#### 1. Set up a virtual environment
+
+```bash
+python -m venv venv
 source venv/bin/activate  # On Linux/macOS
 # or
 venv\Scripts\activate     # On Windows
 ```
 
-### 2. Install dependencies
+#### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set up required tables in Postgres
+#### 3. Set up required tables in Postgres
 
 Execute the SQL in `sql/schema.sql` to create all necessary tables, indexes, and functions.
 
 Be sure to change the embedding dimensions on lines 31, 67, and 100 based on your embedding model. OpenAI's text-embedding-3-small is 1536 and nomic-embed-text from Ollama is 768 dimensions, for reference.
 
-Note that this script will drop all tables before creating/recreating!
+Note that this script will drop all tables before creating/recreating them.
 
-### 4. Set up Neo4j
-
-You have a couple easy options for setting up Neo4j:
+#### 4. Set up Neo4j
 
 #### Option A: Using Local-AI-Packaged (Simplified setup - Recommended)
 1. Clone the repository: `git clone https://github.com/coleam00/local-ai-packaged`
@@ -66,15 +88,15 @@ You have a couple easy options for setting up Neo4j:
 3. Start the DBMS and set a password
 4. Note the connection details (URI, username, password)
 
-### 5. Configure environment variables
+#### 5. Configure environment variables
 
-Create a `.env` file in the project root:
+Copy `example.env` to `.env` and fill in your values:
 
 ```bash
-# Database Configuration (example Neon connection string)
+# Database Configuration
 DATABASE_URL=postgresql://username:password@ep-example-12345.us-east-2.aws.neon.tech/neondb
 
-# Neo4j Configuration  
+# Neo4j Configuration
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your_password
@@ -102,11 +124,11 @@ APP_PORT=8058
 
 For other LLM providers:
 ```bash
-# Ollama (Local)
+# Ollama (Local — no API key needed)
 LLM_PROVIDER=ollama
 LLM_BASE_URL=http://localhost:11434/v1
 LLM_API_KEY=ollama
-LLM_CHOICE=qwen2.5:14b-instruct
+LLM_CHOICE=qwen3:32b-instruct
 
 # OpenRouter
 LLM_PROVIDER=openrouter
@@ -125,51 +147,39 @@ LLM_CHOICE=gemini-2.5-flash
 
 ### 1. Prepare Your Documents
 
-Add your markdown documents to the `documents/` folder:
-
-```bash
-mkdir -p documents
-```
-
-```bash
-cp -r big_tech_docs/* documents/
-```
-This includes 21 detailed documents about major tech companies and their AI initiatives. Be aware that processing all these files into the knowledge graph will take significant time (potentially 30+ minutes) due to the computational complexity of entity extraction and relationship building.
+Add your PDF research papers to the `source_papers/` folder. The folder already contains 15 papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion — you do not need to convert PDFs to any other format first.
 
 ### 2. Run Document Ingestion
 
 **Important**: You must run ingestion first to populate the databases before the agent can provide meaningful responses.
 
 ```bash
-# Basic ingestion with semantic chunking
+# Basic ingestion
 python -m ingestion.ingest
 
 # Clean existing data and re-ingest everything
 python -m ingestion.ingest --clean
 
-# Custom settings for faster processing (no knowledge graph)
-python -m ingestion.ingest --chunk-size 800 --no-semantic --verbose
+# Faster processing without knowledge graph
+python -m ingestion.ingest --no-graph --verbose
 ```
 
 The ingestion process will:
-- Parse and semantically chunk your documents
+- Parse each PDF and detect scientific sections (Abstract, Introduction, Methods, Results, Discussion, References)
+- Extract DOIs and publication years from paper headers
+- Extract biomedical entities: cell types, media suppliers, culture conditions, assay methods, institutions
 - Generate embeddings for vector search
-- Extract entities and relationships for the knowledge graph
 - Store everything in PostgreSQL and Neo4j
 
-NOTE that this can take a while because knowledge graphs are very computationally expensive!
+Note that ingestion can take a while, especially if semantic chunking or knowledge graph building is enabled, because both require LLM calls per chunk.
 
-### 3. Configure Agent Behavior (Optional)
+### 3. Configure Agent Behaviour (Optional)
 
-Before running the API server, you can customize when the agent uses different tools by modifying the system prompt in `agent/prompts.py`. The system prompt controls:
-- When to use vector search vs knowledge graph search
-- How to combine results from different sources
-- The agent's reasoning strategy for tool selection
+Before running the API server, you can customise when the agent uses different tools by modifying the system prompt in `agent/prompts.py`. The system prompt controls which metrics the agent extracts, how it compares FBS vs. FBS-free conditions, and when to use each search tool.
 
 ### 4. Start the API Server (Terminal 1)
 
 ```bash
-# Start the FastAPI server
 python -m agent.api
 
 # Server will be available at http://localhost:8058
@@ -177,63 +187,59 @@ python -m agent.api
 
 ### 5. Use the Command Line Interface (Terminal 2)
 
-The CLI provides an interactive way to chat with the agent and see which tools it uses for each query.
-
 ```bash
-# Start the CLI in a separate terminal from the API (connects to default API at http://localhost:8058)
+# Start the CLI (connects to http://localhost:8058 by default)
 python cli.py
 
-# Connect to a different URL
-python cli.py --url http://localhost:8058
-
-# Connect to a specific port
+# Connect to a different port
 python cli.py --port 8080
 ```
 
 #### CLI Features
 
-- **Real-time streaming responses** - See the agent's response as it's generated
-- **Tool usage visibility** - Understand which tools the agent used:
-  - `vector_search` - Semantic similarity search
-  - `graph_search` - Knowledge graph queries
-  - `hybrid_search` - Combined search approach
-- **Session management** - Maintains conversation context
-- **Color-coded output** - Easy to read responses and tool information
+- **Real-time streaming responses** — see the agent's answer as it is generated
+- **Tool usage visibility** — understand which tools the agent used:
+  - `vector_search` — semantic similarity search across paper chunks
+  - `hybrid_search` — combined vector + keyword search
+  - `search_by_entity` — targeted lookup by cell type, supplier, culture condition, assay method, or institution
+  - `get_document` — retrieve the full content of a specific paper
+  - `list_documents` — browse all indexed papers
+- **Session management** — maintains conversation context across questions
+- **Color-coded output** — easy to read responses and tool information
 
 #### Example CLI Session
 
 ```
-🤖 Agentic RAG with Knowledge Graph CLI
+🤖 Agentic RAG — Serum-Free Cell Culture CLI
 ============================================================
 Connected to: http://localhost:8058
 
-You: What are Microsoft's AI initiatives?
+You: What viability outcomes were reported for CHO cells in serum-free media?
 
 🤖 Assistant:
-Microsoft has several major AI initiatives including...
+Three studies reported viability above 90% for CHO cells in serum-free conditions...
 
 🛠 Tools Used:
-  1. vector_search (query='Microsoft AI initiatives', limit=10)
-  2. graph_search (query='Microsoft AI projects')
+  1. vector_search (query='CHO cell viability serum-free', limit=10)
+  2. search_by_entity (entity_category='cell_types', entity_value='CHO')
 
 ────────────────────────────────────────────────────────────
 
-You: How is Microsoft connected to OpenAI?
+You: Which suppliers appeared most often in xeno-free protocols?
 
 🤖 Assistant:
-Microsoft has a significant strategic partnership with OpenAI...
+Lonza and CellGenix were cited in multiple xeno-free protocols across the indexed papers...
 
 🛠 Tools Used:
-  1. hybrid_search (query='Microsoft OpenAI partnership', limit=10)
-  2. get_entity_relationships (entity='Microsoft')
+  1. hybrid_search (query='xeno-free supplier', limit=10)
 ```
 
 #### CLI Commands
 
-- `help` - Show available commands
-- `health` - Check API connection status
-- `clear` - Clear current session
-- `exit` or `quit` - Exit the CLI
+- `help` — show available commands
+- `health` — check API connection status
+- `clear` — clear current session
+- `exit` or `quit` — exit the CLI
 
 ### 6. Test the System
 
@@ -247,7 +253,7 @@ curl http://localhost:8058/health
 curl -X POST "http://localhost:8058/chat" \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "What are Google'\''s main AI initiatives?"
+    "message": "Which papers report doubling times for HEK293 cells in chemically defined media?"
   }'
 ```
 
@@ -256,7 +262,7 @@ curl -X POST "http://localhost:8058/chat" \
 curl -X POST "http://localhost:8058/chat/stream" \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Compare Microsoft and Google'\''s AI strategies",
+    "message": "Compare viability outcomes for CHO and HEK293 cells in FBS-free conditions"
   }'
 ```
 
@@ -264,48 +270,43 @@ curl -X POST "http://localhost:8058/chat/stream" \
 
 ### The Power of Hybrid RAG + Knowledge Graph
 
-This system combines the best of both worlds:
+This system combines two complementary approaches:
 
 **Vector Database (PostgreSQL + pgvector)**:
-- Semantic similarity search across document chunks
-- Fast retrieval of contextually relevant information
-- Excellent for finding documents about similar topics
+- Semantic similarity search across paper chunks — finds relevant passages even when the wording differs from your question
+- Hybrid search combines semantic similarity with keyword matching for broader coverage
+- Entity search filters results by specific biomedical entities (e.g. all chunks mentioning "Lonza" as a supplier)
 
 **Knowledge Graph (Neo4j + Graphiti)**:
-- Temporal relationships between entities (companies, people, technologies)
-- Graph traversal for discovering connections
-- Perfect for understanding partnerships, acquisitions, and evolution over time
+- Tracks relationships between entities across papers — useful for understanding which media formulations and suppliers appear alongside particular cell types or outcomes
+- Graph traversal for discovering connections between studies
 
 **Intelligent Agent**:
-- Automatically chooses the best search strategy
-- Combines results from both databases
-- Provides context-aware responses with source citations
+- Automatically chooses the best search strategy for each question
+- Combines results from multiple searches when needed
+- Always cites paper title, authors, DOI or PMID — never fabricates values
+- If a metric is not reported in a paper, it says so explicitly
 
 ### Example Queries
 
-The system excels at queries that benefit from both semantic search and relationship understanding:
+- **Metric lookup**: "What viability percentages were reported for HEK293 cells in chemically defined media?"
+  — uses vector search to find passages reporting that specific measurement
 
-- **Semantic Questions**: "What AI research is Google working on?" 
-  - Uses vector search to find relevant document chunks about Google's AI research
+- **Entity-targeted**: "Which suppliers were used in xeno-free protocols for neural stem cells?"
+  — uses entity search filtered by cell type and supplier category
 
-- **Relationship Questions**: "How are Microsoft and OpenAI connected?"
-  - Uses knowledge graph to traverse relationships and partnerships
+- **Cross-paper comparison**: "Compare doubling times across CHO studies that used FBS-free conditions"
+  — uses hybrid search to gather results from multiple papers for side-by-side comparison
 
-- **Temporal Questions**: "Show me the timeline of Meta's AI announcements"
-  - Leverages Graphiti's temporal capabilities to track changes over time
+- **FBS control comparison**: "Find papers that report both FBS and FBS-free viability data for direct comparison"
+  — uses hybrid search to locate studies with matched control data
 
-- **Complex Analysis**: "Compare the AI strategies of FAANG companies"
-  - Combines vector search for strategy documents with graph traversal for competitive analysis
+### Why This Architecture Works Well
 
-### Why This Architecture Works So Well
-
-1. **Complementary Strengths**: Vector search finds semantically similar content while knowledge graphs reveal hidden connections
-
-2. **Temporal Intelligence**: Graphiti tracks how facts change over time, perfect for the rapidly evolving AI landscape
-
-3. **Flexible LLM Support**: Switch between OpenAI, Ollama, OpenRouter, or Gemini based on your needs
-
-4. **Production Ready**: Comprehensive testing, error handling, and monitoring
+1. **Complementary Strengths**: Semantic search finds related content regardless of wording; the knowledge graph reveals connections between entities across papers
+2. **No Hallucination on Numbers**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times — only to report what is written in the retrieved passages
+3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section
+4. **Flexible LLM Support**: Switch between OpenAI, Ollama, OpenRouter, or Gemini based on your needs and budget
 
 ## API Documentation
 
@@ -313,29 +314,37 @@ Visit http://localhost:8058/docs for interactive API documentation once the serv
 
 ## Key Features
 
-- **Hybrid Search**: Seamlessly combines vector similarity and graph traversal
-- **Temporal Knowledge**: Tracks how information changes over time
+- **PDF Support**: Reads scientific PDFs directly — no conversion step needed; detects IMRaD sections automatically
+- **Semantic + Keyword Search**: Finds relevant passages by meaning, by exact terms, or by both combined
+- **Entity Search**: Filter results by cell type, supplier, culture condition, assay method, or institution
+- **No Fabrication**: Agent is instructed to report "not found in this study" rather than estimating missing values
 - **Streaming Responses**: Real-time AI responses with Server-Sent Events
-- **Flexible Providers**: Support for multiple LLM and embedding providers
-- **Semantic Chunking**: Intelligent document splitting using LLM analysis
-- **Production Ready**: Comprehensive testing, logging, and error handling
+- **Flexible Providers**: Support for multiple LLM and embedding providers including local (Ollama)
+- **Session Memory**: Conversation history is stored so follow-up questions work naturally
 
 ## Project Structure
 
 ```
-agentic-rag-knowledge-graph/
-├── agent/                  # AI agent and API
-│   ├── agent.py           # Main Pydantic AI agent
-│   ├── api.py             # FastAPI application
-│   ├── providers.py       # LLM provider abstraction
-│   └── models.py          # Data models
-├── ingestion/             # Document processing
-│   ├── ingest.py         # Main ingestion pipeline
-│   ├── chunker.py        # Semantic chunking
-│   └── embedder.py       # Embedding generation
-├── sql/                   # Database schema
-├── documents/             # Your markdown files
-└── tests/                # Comprehensive test suite
+ITHD-Project-AI-serum-free-culture/
+├── agent/                    # AI agent and API
+│   ├── agent.py             # Pydantic AI agent with registered tools
+│   ├── api.py               # FastAPI application and endpoints
+│   ├── db_utils.py          # PostgreSQL connection and query functions
+│   ├── graph_utils.py       # Neo4j / Graphiti integration
+│   ├── models.py            # Data models (request, response, search results)
+│   ├── prompts.py           # System prompt controlling agent behaviour
+│   ├── providers.py         # LLM and embedding provider abstraction
+│   └── tools.py             # Agent tool implementations
+├── ingestion/               # Document processing pipeline
+│   ├── ingest.py            # Main ingestion orchestration
+│   ├── pdf_parser.py        # PDF reading and IMRaD section detection
+│   ├── chunker.py           # Semantic and rule-based chunking
+│   ├── embedder.py          # Embedding generation (multi-provider)
+│   └── graph_builder.py     # Knowledge graph construction
+├── sql/                     # Database schema
+├── source_papers/           # Your scientific PDF files (15 papers included)
+├── tests/                   # Test suite
+└── cli.py                   # Interactive command-line interface
 ```
 
 ## Running Tests
@@ -356,25 +365,25 @@ pytest tests/ingestion/
 
 ### Common Issues
 
-**Database Connection**: Ensure your DATABASE_URL is correct and the database is accessible
+**Database Connection**: Ensure your `DATABASE_URL` is correct and the database is accessible
 ```bash
-# Test your connection
 psql -d "$DATABASE_URL" -c "SELECT 1;"
 ```
 
 **Neo4j Connection**: Verify your Neo4j instance is running and credentials are correct
 ```bash
-# Check if Neo4j is accessible (adjust URL as needed)
 curl -u neo4j:password http://localhost:7474/db/data/
 ```
 
-**No Results from Agent**: Make sure you've run the ingestion pipeline first
+**No Results from Agent**: Make sure you have run the ingestion pipeline first
 ```bash
 python -m ingestion.ingest --verbose
 ```
 
 **LLM API Issues**: Check your API key and provider configuration in `.env`
 
+**PDFs not being read**: Ensure your files are in `source_papers/` and have a `.pdf` extension. The parser supports standard text-layer PDFs; scanned-image-only PDFs without OCR will produce little or no text.
+
 ---
 
-Built with ❤️ using Pydantic AI, FastAPI, PostgreSQL, and Neo4j.
+Built with Pydantic AI, FastAPI, PostgreSQL, and Neo4j.
