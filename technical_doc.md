@@ -313,7 +313,7 @@ All configuration is done through the `.env` file. Copy `example.env` to `.env` 
 | `LLM_PROVIDER` | Yes | — | Provider name: `openai`, `ollama`, `gemini`, or `openrouter` |
 | `LLM_BASE_URL` | Yes | — | API endpoint. See examples below |
 | `LLM_API_KEY` | Yes | — | API key. Use `ollama` as the value for local Ollama |
-| `LLM_CHOICE` | Yes | — | Model name, e.g. `qwen2.5:7b`, `gpt-4.1-mini`, `gemini-2.5-flash` |
+| `LLM_CHOICE` | Yes | — | Model name, e.g. `qwen2.5:7b`, `qwen3:32b`, `gpt-4.1-mini`, `gemini-2.5-flash` |
 | `INGESTION_LLM_CHOICE` | No | same as `LLM_CHOICE` | A separate (usually faster or cheaper) model used only during document ingestion |
 
 **Provider base URL examples:**
