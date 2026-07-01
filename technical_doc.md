@@ -226,7 +226,9 @@ python -m ingestion.ingest --documents /path/to/your/papers
 > exit
 > ```
 
-**Step 4 — Start the API server**
+**Step 4 — Start the API server (Terminal 1)**
+
+The API server runs in the foreground and must stay running to handle requests. Leave this terminal open.
 
 ```bash
 python -m agent.api
@@ -238,9 +240,12 @@ python -m agent.api
 curl http://localhost:8058/health
 ```
 
-**Step 6 — Start the CLI chat**
+**Step 6 — Start the CLI chat (Terminal 2)**
+
+Open a new terminal window, activate the environment, then start the CLI. The API server from Step 4 must already be running in the other terminal.
 
 ```bash
+source venv/bin/activate
 python cli.py
 ```
 
