@@ -38,7 +38,7 @@ Serum-free cell culture research is scattered across many papers with inconsiste
 
 **Operating System**
 
-- Linux (Ubuntu 22.04+ recommended) — for the VM
+- Linux (Ubuntu 22.04+ recommended) for the VM
 - Windows/macOS with WSL2 or Remote-SSH also supported
 
 **Hardware**
