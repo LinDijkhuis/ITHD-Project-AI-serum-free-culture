@@ -209,7 +209,7 @@ python -m ingestion.ingest --documents /path/to/your/papers
 >
 > ```bash
 > # Start a named screen session
-> screen -S ingest
+> screen -S <name_screen>
 >
 > # Run ingestion inside the session
 > python -m ingestion.ingest --verbose
