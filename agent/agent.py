@@ -81,7 +81,7 @@ async def vector_search(
     )
     
     results = await vector_search_tool(input_data)
-    
+
     # Convert results to dict for agent
     return [
         {
@@ -89,7 +89,8 @@ async def vector_search(
             "score": r.score,
             "document_title": r.document_title,
             "document_source": r.document_source,
-            "chunk_id": r.chunk_id
+            "chunk_id": r.chunk_id,
+            "section": r.metadata.get("section")
         }
         for r in results
     ]
@@ -125,7 +126,7 @@ async def hybrid_search(
     )
     
     results = await hybrid_search_tool(input_data)
-    
+
     # Convert results to dict for agent
     return [
         {
@@ -133,7 +134,8 @@ async def hybrid_search(
             "score": r.score,
             "document_title": r.document_title,
             "document_source": r.document_source,
-            "chunk_id": r.chunk_id
+            "chunk_id": r.chunk_id,
+            "section": r.metadata.get("section")
         }
         for r in results
     ]
@@ -179,6 +181,7 @@ async def search_by_entity(
             "document_title": r.document_title,
             "document_source": r.document_source,
             "chunk_id": r.chunk_id,
+            "section": r.metadata.get("section"),
             "entities": r.metadata.get("entities", {})
         }
         for r in results

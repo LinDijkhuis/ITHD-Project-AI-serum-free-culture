@@ -13,6 +13,9 @@
   - [2.3 Packages](#23-packages)
 - [3. Instruction Guide](#3-instruction-guide)
 - [4. Architecture](#4-architecture)
+- [5. Configuration Reference](#5-configuration-reference)
+- [6. Known Limitations](#6-known-limitations)
+- [7. Troubleshooting](#7-troubleshooting)
 - [Support & Contact](#support--contact)
 
 ---
