@@ -1,6 +1,10 @@
 # Technical Documentation
 
-**Version 2**
+**Author:** Lin Dijkhuis
+
+**Date:** 30-06-2026
+
+**Version:** 2.0
 
 ---
 
