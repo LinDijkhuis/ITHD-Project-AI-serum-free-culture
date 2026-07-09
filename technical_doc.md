@@ -2,21 +2,62 @@
 
 **Author:** Lin Dijkhuis
 
-**Date:** 30-06-2026
+**Date:** 09-07-2026
 
-**Version:** 2.0
+**Version:** 3.0
 
 ---
+
+## Before You Start: What Is This Project?
+
+**Why this exists:** Researchers working on serum-free and xeno-free cell culture have to manually dig through dozens of papers to answer basic questions: what medium was used, what viability was reported, which supplier. This project was built to remove that manual search step: ask a question in plain English, get an answer backed by direct citations to the original papers, not the AI's general knowledge.
+
+**Status:** []
+
+**How it works, in one paragraph:** PDFs are ingested and split into 
+searchable sections. When you ask a question, the system searches those 
+sections for relevant passages first, then asks the AI to answer using 
+only those passages. Which is why it can cite specific papers and DOIs 
+instead of guessing. [If the knowledge graph is actually used in 
+answering questions, ----]
+
+**Example:**
+> **Question:** "Has the cell viability decreased without the use of FCS or FBS?"
+>
+> **Answer:** *[PBMC Cultures in Serum-Free Media (Cochrane et al., 2024) ** - Cell Type*": Human peripheral blood mononuclear cells (PBMCs) - + Media`+: AIM-V, CTS OpTmizer T Cell Expansion SFM, X-VIVO 15 (compared to RPMI + human serum) +viability+*: Serum-free media supported "good levels of viable and proliferating T cells and B s" over 6 days. - FBS Comparison**: Minimal differences in viability between serum-free and human serum-containing media under unstimulated conditions. - * Stimulated Conditions+*: No direct decrease in viability reported, though variability in response s to stimuli (e.g., CpG-ODN, PWM) was observed across media. - 
+***Conclusion**: Serum-free media provided comparable viability to human serum-containing controls, though specific features of serum (e.g., unknown factors) may influence outcomes.".]*
+
+If the answer isn't in the ingested papers, the system says so. It does 
+not guess or make things up.
+
+**Quick glossary** (for readers without an AI/ML background):
+
+| Term | Meaning |
+|------|---------|
+| RAG (Retrieval-Augmented Generation) | Instead of asking an AI to answer from memory, the system first searches your documents for relevant passages, then asks the AI to answer using only those passages. This is what makes the citations reliable. |
+| Embedding | A numerical representation of a piece of text that lets the computer measure how similar two pieces of text are in meaning, not just in wording. |
+| Vector search | Searching by meaning (using embeddings) rather than by exact keyword match. |
+| Knowledge graph | A network of extracted facts (e.g. "Paper X uses Medium Y") stored so relationships between entities can, in future, be queried directly. |
+| Chunk | A paper is too long to hand to the AI all at once, so it's split into smaller sections ("chunks") that can be searched individually. |
+
+**Who this is for:** 
+- Researchers in serum-free/xeno-free cell culture who want query a growing library of papers and reviewing them instead of manually searching them.
+
 
 ## Contents
 
 - [1. Project Overview](#1-project-overview)
+  - [1.1 Why AI and RAG](#11-current-project-status)
+  - [1.1 Current Project Status](#12-current-project-status)
+  - [1.3 Problem Statement](#13-problem-statement)
 - [2. Getting Started](#2-getting-started)
   - [2.1 System Requirements](#21-system-requirements)
   - [2.2 First-Time Setup](#22-first-time-setup)
   - [2.3 Packages](#23-packages)
 - [3. Instruction Guide](#3-instruction-guide)
 - [4. Architecture](#4-architecture)
+  - [4.1 How the System Works](#41-how-the-system-works)
+  - [4.2 System Architecture Diagram](#42-system-architecture-diagram)
 - [5. Configuration Reference](#5-configuration-reference)
 - [6. Known Limitations](#6-known-limitations)
 - [7. Troubleshooting](#7-troubleshooting)
@@ -30,7 +71,34 @@ This system is an Agentic Retrieval-Augmented Generation (RAG) application built
 
 The system retrieves relevant snippets from your PDFs first, then asks the AI to write an answer using only those snippets, which is why it can cite specific papers and DOIs instead of guessing.
 
-### Problem Statement
+## 1.1. Why AI and RAG
+
+A plain AI chatbot (e.g. asking ChatGPT directly) can answer questions about cell culture from its general training knowledge, but it cannot guarantee the answer reflects what a *specific* paper actually says. It may blend, misremember, or hallucinate details, and it cannot give a verifiable source. 
+
+This project uses Retrieval-Augmented Generation (RAG) instead: the system only answers using text it has actually retrieved from the uploaded papers, and every answer is traceable back to a specific paper and DOI. This trades some flexibility (it can only answer about papers that have been ingested) for reliability and verifiability, which matters 
+in a scientific context where an unverifiable or fabricated answer is worse than no answer.
+
+### 1.2 Current Project Status
+
+The project currently provides a complete Retrieval-Augmented Generation (RAG) pipeline for scientific literature. A researcher can upload research papers, ingest them into the system, and ask natural-language questions through the AI assistant.
+
+At the current stage the system can successfully:
+
+- Parse scientific PDFs into logical IMRaD sections.
+- Split papers into searchable chunks.
+- Generate semantic embeddings for every chunk.
+- Store chunks in PostgreSQL with pgvector.
+- Build a knowledge graph in Neo4j.
+- Retrieve relevant passages using vector and hybrid search.
+- Generate evidence-based answers that cite the original research papers.
+
+The current implementation **does not yet** generate scientific recommendations automatically. Instead, it retrieves the most relevant evidence from the literature. Producing structured recommendations requires additional work on table extraction, domain-specific entity extraction, and comparison logic, which are described later in this document.
+
+## Current System Status
+
+--------
+
+### 1.3 Problem Statement
 
 Serum-free cell culture research is scattered across many papers with inconsistent reporting formats. Manually comparing viability percentages, doubling times, or media brands across a literature corpus is time-consuming. This system indexes the PDFs into two complementary databases and lets an LLM-powered agent retrieve and synthesise the relevant information on demand.
 
@@ -188,12 +256,27 @@ ollama list
 
 **Step 3 — Ingest documents**
 
-Place your PDF or markdown research papers in the `source_papers/` folder, then run:
+Place your PDF (or markdown) research papers in the `source_papers/` folder, then run the ingestion pipeline:
 
 ```bash
-# Basic ingestion (uses source_papers/ by default)
+# Basic ingestion
 python -m ingestion.ingest
+```
+This automatically:
 
+- Detects the paper structure (IMRaD sections)
+- Extracts metadata (title, DOI, publication year)
+- Creates chunks
+- Generates embeddings
+- Stores the chunks inside PostgreSQL
+- Extracts entities into Neo4j
+
+![alt text](image-1.png)
+In the image above you can see in the terminal the environment was activated and the ingestion pipeline was started (called upon).
+
+#### Optional flags:
+
+```bash
 # With verbose logging
 python -m ingestion.ingest --verbose
 
@@ -205,6 +288,11 @@ python -m ingestion.ingest --clean
 
 # Use a different folder
 python -m ingestion.ingest --documents /path/to/your/papers
+```
+
+#### Verify the paper was added:
+```bash
+curl http://localhost:8058/documents
 ```
 
 > **Tip — Running ingestion in the background on the VM**
@@ -230,6 +318,15 @@ python -m ingestion.ingest --documents /path/to/your/papers
 > exit
 > ```
 
+![alt text](image-3.png)
+In the image above you see the terminal while the files are being ingested, chunked and embedded (mostly with graphiti).
+
+![alt text](image.png)
+A screenshot of after the ingestion is done. 14 files were ingested (as in the screenshots). 
+
+![alt text](image-2.png)
+In the image above you see the ingestion summary that appears in the terminal after the ingestion of the files is done. The names of the files are shown with the amount of chunks and graph episodes created.
+
 **Step 4 — Start the API server (Terminal 1)**
 
 The API server runs in the foreground and must stay running to handle requests. Leave this terminal open.
@@ -237,6 +334,8 @@ The API server runs in the foreground and must stay running to handle requests. 
 ```bash
 python -m agent.api
 ```
+![alt text](image-6.png)
+In the image above you see that agent.api is called using the command in the terminal. It shows that the application start-up is complete and ready.
 
 **Step 5 — Verify the server is running**
 
@@ -252,6 +351,9 @@ Open a new terminal window, activate the environment, then start the CLI. The AP
 source venv/bin/activate
 python cli.py
 ```
+
+![alt text](image-7.png)
+In the image above you see a new terminal window is opened and the CLI.py is called upon or the command is typed in the terminal. The CLI is opened and tells it is healthy and ready to be asked a question. 
 
 ---
 
@@ -271,16 +373,62 @@ python cli.py
 ```bash
 curl -X POST http://localhost:8058/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "What media compositions are used in serum-free culture?"}'
+  -d '{"message": "What is the cell viability for the serum-free medium?"}'
 ```
 
 ---
 
 ## 4. Architecture
 
+### 4.1 How the System Works
+
+The diagram below shows the complete workflow of the application.
+
+1. Research papers are placed in the `source_papers` folder.
+2. The ingestion pipeline reads every PDF.
+3. Each paper is split into logical scientific sections (IMRaD).
+4. The sections are divided into smaller chunks.
+5. Every chunk is converted into an embedding and stored inside PostgreSQL.
+6. Graphiti extracts entities and relationships and stores them in Neo4j.
+7. When a researcher asks a question, the AI agent searches the stored information.
+8. The retrieved evidence is sent to the language model, which generates an answer containing references to the original papers.
+
+
+
+## Ingestion Pipeline
+
 ```mermaid
 flowchart TD
-    A["📄 source_papers/*.pdf"]
+    A[PDF] --> B[Section Detection - IMRaD]
+    B --> C[Section-aware Chunking]
+    C --> D[Embeddings]
+    C --> E[Entity Extraction - Graphiti]
+    D --> F[(PostgreSQL + pgvector)]
+    E --> G[(Neo4j Knowledge Graph)]
+```
+
+
+## Query Pipeline
+
+```mermaid
+flowchart TD
+    A[Researcher Question] --> B[Pydantic AI Agent]
+    B --> C[Determine Retrieval Strategy]
+    C --> D[Vector Search]
+    C --> E[Hybrid Search]
+    C --> F[Graph Search]
+    D --> G[Retrieve Relevant Evidence]
+    E --> G
+    F --> G
+    G --> H[LLM Generation]
+    H --> I[Evidence-backed Response]
+```
+
+### 4.2 System Architecture Diagram
+
+```mermaid
+flowchart TD
+    A["source_papers/*.pdf"]
     A --> B
 
     B["**Ingestion Pipeline**\ningest.py"]
@@ -381,6 +529,48 @@ PDFs that consist of scanned images without a text layer (i.e. no embedded text,
 The PDF parser extracts the title, DOI, and publication year from paper headers. Author names and journal names are not reliably extracted because their position and format vary too much between publishers. These fields may be absent from chunk metadata.
 
 ---
+
+## Evaluation
+
+The current implementation successfully demonstrates the technical feasibility of the retrieval pipeline.
+
+Successfully implemented
+
+- PDF ingestion
+- Automatic chunking
+- Embedding generation
+- Vector search
+- Hybrid retrieval
+- Citation-based answers
+
+Current limitations
+
+- Tables cannot yet be extracted correctly
+- Figures cannot be analysed
+- Morphology images are ignored
+- No structured comparison between papers
+- Recommendations cannot yet be generated
+
+The system therefore functions as an evidence retrieval assistant rather than a scientific recommendation system.
+
+#### Examples 
+
+![alt text](image-9.png)
+![alt text](image-8.png)
+
+In the image above the agent was asked "what medium does not contain animal derived components and is completely animal free?". The agent gives the key findings of the paper and the outcomes of the medium on the cells. The sources of which paper the this information comes from was also given by the agent. 
+---
+![alt text](image-10.png)
+![alt text](image-11.png)
+In the image above, the agent was asked "what is in the defined medium?". The agent uses one explicit paper to answer this question. The title and DOI of the paper is given.
+
+![alt text](image-12.png)
+![alt text](image-13.png)
+In the image above, the agent was asked "What is the transfection efficiency of the HEK cell?". The agent answers "Specific details about transfection protocols, reagent compatibility, or efficiency percentages (e.g., % GFP-positive cells) are absent in the analyzed passages.". The agent gives answer: "- **Transfection Efficiency Not Assessed**: None of the listed studies or sections (methods, results, discussion) evaluate transfection performance in HEK or similar cell lines."
+
+![alt text](image-14.png)
+![alt text](image-15.png)
+In the image above, the agent was asked "Is the cell differentiation speed increased or decreased without FCS-containing medium". The agent gives the key points of three papers that could answer the question asked. The sources of which paper the this information comes from was also given by the agent. 
 
 ## 7. Troubleshooting
 
