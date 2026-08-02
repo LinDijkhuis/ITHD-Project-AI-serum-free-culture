@@ -12,23 +12,29 @@
 
 **Why this exists:** Researchers working on serum-free and xeno-free cell culture have to manually dig through dozens of papers to answer basic questions: what medium was used, what viability was reported, which supplier. This project was built to remove that manual search step: ask a question in plain English, get an answer backed by direct citations to the original papers, not the AI's general knowledge.
 
-**Status:** []
+**Status:** [The core system works and is reliable: it reads PDFs, searches them by meaning, and answers with citations. Two things are still in progress: it also builds a relationship map that isn't used in answers yet, and it hasn't been tested on large paper libraries.]
 
-**How it works, in one paragraph:** PDFs are ingested and split into 
-searchable sections. When you ask a question, the system searches those 
-sections for relevant passages first, then asks the AI to answer using 
-only those passages. Which is why it can cite specific papers and DOIs 
-instead of guessing. [If the knowledge graph is actually used in 
-answering questions, ----]
+**How it works, in one paragraph:** 
+PDFs are ingested and split into searchable sections. When you ask a question, the system searches those sections for relevant passages first, then asks the AI to answer using only those passages. Which is why it can cite specific papers and DOIs 
+instead of guessing. 
 
 **Example:**
-> **Question:** "Has the cell viability decreased without the use of FCS or FBS?"
->
-> **Answer:** *[PBMC Cultures in Serum-Free Media (Cochrane et al., 2024) ** - Cell Type*": Human peripheral blood mononuclear cells (PBMCs) - + Media`+: AIM-V, CTS OpTmizer T Cell Expansion SFM, X-VIVO 15 (compared to RPMI + human serum) +viability+*: Serum-free media supported "good levels of viable and proliferating T cells and B s" over 6 days. - FBS Comparison**: Minimal differences in viability between serum-free and human serum-containing media under unstimulated conditions. - * Stimulated Conditions+*: No direct decrease in viability reported, though variability in response s to stimuli (e.g., CpG-ODN, PWM) was observed across media. - 
-***Conclusion**: Serum-free media provided comparable viability to human serum-containing controls, though specific features of serum (e.g., unknown factors) may influence outcomes.".]*
 
-If the answer isn't in the ingested papers, the system says so. It does 
-not guess or make things up.
+> **Question:** *Has the cell viability decreased without the use of FCS or FBS?*
+>
+> **Answer:**
+>
+> Based on **"PBMC Cultures in Serum-Free Media" (Cochrane et al., 2024)**:
+>
+> - **Cell type:** Human peripheral blood mononuclear cells (PBMCs).
+> - **Media compared:** AIM-V, CTS OpTmizer T Cell Expansion SFM, and X-VIVO 15 were compared with RPMI supplemented with human serum.
+> - **Cell viability:** Serum-free media supported good levels of viable and proliferating T cells and B cells over a 6-day culture period.
+> - **Comparison with serum-containing media:** Under unstimulated conditions, there were minimal differences in cell viability between serum-free media and human serum-containing controls.
+> - **Stimulated conditions:** No direct decrease in viability was reported. Some variability in responses to different stimuli (e.g., CpG-ODN and PWM) was observed across media.
+>
+> **Conclusion:** The study found that serum-free media provided cell viability comparable to human serum-containing controls. It did not report that removing FCS or FBS decreased cell viability, although specific serum components may still influence cellular responses.
+
+If the answer isn't in the ingested papers, the system says so. It does not guess or make things up.
 
 **Quick glossary** (for readers without an AI/ML background):
 
@@ -47,8 +53,8 @@ not guess or make things up.
 ## Contents
 
 - [1. Project Overview](#1-project-overview)
-  - [1.1 Why AI and RAG](#11-current-project-status)
-  - [1.1 Current Project Status](#12-current-project-status)
+  - [1.1 Why AI and RAG](#11-why-ai-and-rag)
+  - [1.2 Current Project Status](#12-current-project-status)
   - [1.3 Problem Statement](#13-problem-statement)
 - [2. Getting Started](#2-getting-started)
   - [2.1 System Requirements](#21-system-requirements)
@@ -59,8 +65,9 @@ not guess or make things up.
   - [4.1 How the System Works](#41-how-the-system-works)
   - [4.2 System Architecture Diagram](#42-system-architecture-diagram)
 - [5. Configuration Reference](#5-configuration-reference)
-- [6. Known Limitations](#6-known-limitations)
-- [7. Troubleshooting](#7-troubleshooting)
+- [6. Current system status](#6-current-system-status)
+- [7. Known Limitations](#7-known-limitations)
+- [8. Troubleshooting](#8-troubleshooting)
 - [Support & Contact](#support--contact)
 
 ---
@@ -75,28 +82,30 @@ The system retrieves relevant snippets from your PDFs first, then asks the AI to
 
 A plain AI chatbot (e.g. asking ChatGPT directly) can answer questions about cell culture from its general training knowledge, but it cannot guarantee the answer reflects what a *specific* paper actually says. It may blend, misremember, or hallucinate details, and it cannot give a verifiable source. 
 
-This project uses Retrieval-Augmented Generation (RAG) instead: the system only answers using text it has actually retrieved from the uploaded papers, and every answer is traceable back to a specific paper and DOI. This trades some flexibility (it can only answer about papers that have been ingested) for reliability and verifiability, which matters 
-in a scientific context where an unverifiable or fabricated answer is worse than no answer.
+This project uses Retrieval-Augmented Generation (RAG) instead: the system only answers using text it has actually retrieved from the uploaded papers, and every answer is traceable back to a specific paper and DOI. This trades some flexibility (it can only answer about papers that have been ingested) for reliability and verifiability, which matters in a scientific context where an unverifiable or fabricated answer is worse than no answer.
 
 ### 1.2 Current Project Status
 
-The project currently provides a complete Retrieval-Augmented Generation (RAG) pipeline for scientific literature. A researcher can upload research papers, ingest them into the system, and ask natural-language questions through the AI assistant.
+The project currently provides a complete Retrieval-Augmented Generation (RAG) pipeline for scientific literature. Researchers can upload scientific papers, process them into a searchable knowledge base, and ask natural-language questions through an AI assistant. The assistant retrieves relevant evidence from the uploaded papers and generates answers that cite the original sources.
 
 At the current stage the system can successfully:
 
-- Parse scientific PDFs into logical IMRaD sections.
-- Split papers into searchable chunks.
-- Generate semantic embeddings for every chunk.
-- Store chunks in PostgreSQL with pgvector.
-- Build a knowledge graph in Neo4j.
-- Retrieve relevant passages using vector and hybrid search.
-- Generate evidence-based answers that cite the original research papers.
+- Extract the text and logical sections (e.g., Introduction, Methods, Results, and Discussion) from scientific PDF documents.
+- Convert papers into searchable text passages.
+- Create semantic representations that enable meaning-based rather than keyword-based searching.
+- Store the processed information in a searchable database.
+- Build a knowledge graph representing relationships between entities such as cell types, suppliers, and culture conditions.
+- Retrieve relevant evidence using semantic and keyword-based search techniques.
+- Generate evidence-based answers with citations to the original research papers.
 
 The current implementation **does not yet** generate scientific recommendations automatically. Instead, it retrieves the most relevant evidence from the literature. Producing structured recommendations requires additional work on table extraction, domain-specific entity extraction, and comparison logic, which are described later in this document.
 
-## Current System Status
+The main limitations of the current implementations:
 
---------
+- **The knowledge graph is generated but is not yet used during question answering.** Although the system successfully builds a network of relationships between entities (such as cell types, suppliers, and culture conditions), the AI assistant currently answers questions using the citation-based retrieval system only. Integrating the knowledge graph into the retrieval process is planned future work rather than a missing or faulty feature.
+
+- **The system has only been evaluated on a relatively small collection of papers.** 
+The current evaluation focuses on verifying that the pipeline functions correctly rather than measuring performance at scale. Before the system is deployed with a much larger literature collection, further optimisation will be required. During testing, one minor issue affecting internal record-keeping was identified; this does not affect the evidence retrieved or the answers presented to the user. Further technical details are provided in later sections.
 
 ### 1.3 Problem Statement
 
@@ -512,21 +521,59 @@ All configuration is done through the `.env` file. Copy `example.env` to `.env` 
 
 ---
 
-## 6. Known Limitations
+## 6. Current system status
+
+The core retrieval pipeline is functional end to end: PDFs are parsed, 
+chunked, embedded, and made searchable through vector and hybrid search, 
+with the agent citing paper and DOI for every claim. This part of the 
+system has been tested and works.
+
+Two things sit outside that functional core:
+
+- **The knowledge graph is built but disconnected from question-answering.** 
+  Ingestion populates Neo4j via Graphiti, and a working graph search 
+  method already exists (`GraphitiClient.search()`), but no agent tool 
+  calls it yet — see Known Limitations.
+- **The pipeline has not been performance-tested or optimized at scale.** 
+  It was built and verified for correctness on a small number of papers. 
+  Several parts of the pipeline (documented below) will not scale well 
+  as the paper count grows, and one part has a data-accuracy bug that 
+  should be fixed before the system is relied on for chunk-position data.
+
+## 7. Known Limitations
 
 The following limitations are known and may be addressed in future versions.
 
 **Medium composition from tables**
-Many papers list exact medium ingredients and concentrations in a table within the Methods section. The PDF reader extracts table content as a flat stream of text, which often results in garbled or missing data. When this happens, the agent will explicitly state: *"Medium composition was not fully captured from this paper. It may be in a table that could not be extracted."* It will not guess or fill in values from general knowledge.
+Many papers list exact medium ingredients and concentrations in a table within the Methods section. The PDF reader extracts table content as a flat stream of text, which often results in garbled or missing data. When this happens, the agent will explicitly state: *"Medium composition was not fully captured from this paper. It may be in a table that could not be extracted."* It will not guess or fill in values from general 
+knowledge.
 
-**Knowledge graph not yet queryable by the agent**
-The knowledge graph (Neo4j) is populated during ingestion, building a network of relationships between cell types, media suppliers, culture conditions, and outcomes. However, the AI agent does not yet have a tool to query this graph directly when answering questions. All agent answers currently come from the vector and hybrid search over PostgreSQL. Graph querying is planned for a future version.
+**Knowledge graph is built but not wired to the agent**
+The knowledge graph (Neo4j, via Graphiti) is populated during ingestion, building a network of relationships between cell types, media suppliers, culture conditions, and outcomes. A working search method for the graph already exists (`GraphitiClient.search()` in `agent/graph_utils.py`), but the agent has no tool to call it, so no questions are currently 
+answered using the graph. All agent answers come from vector and hybrid search over PostgreSQL. Connecting the two requires: (1) a wrapper function in `tools.py` (following the pattern of `entity_search_tool`), and (2) a registered `@rag_agent.tool` in `agent.py` with a docstring telling the LLM when to prefer it — relationship-style questions ("which suppliers are used across all MSC papers?") rather than passage-lookup questions, which vector/hybrid search already handle.
 
 **Scanned-image PDFs**
 PDFs that consist of scanned images without a text layer (i.e. no embedded text, only a photo of the page) produce no output. The system requires PDFs with a proper text layer. If a paper produces no chunks after ingestion, this is the most likely cause.
 
 **Author and journal name extraction**
 The PDF parser extracts the title, DOI, and publication year from paper headers. Author names and journal names are not reliably extracted because their position and format vary too much between publishers. These fields may be absent from chunk metadata.
+
+**Chunk position tracking can be wrong for repeated text**
+When locating where a chunk sits in the original document, the system searches for the chunk's text starting from the beginning of the document each time. If a phrase repeats elsewhere in the document, it can return the position of the wrong occurrence. This does not affect chunk *content* or answer quality. Only the recorded start/end character offsets in metadata, which are used for position tracking, not for what the agent reads or cites.
+
+**Not yet tested at scale, performance has not been optimized**
+The pipeline was built and verified for correctness, not throughput. Several stages will slow down or become bottlenecks as the number of ingested papers grows:
+- Documents are ingested one at a time rather than concurrently, so ingestion time scales linearly with paper count even though most of the work (LLM calls, embedding calls, database writes) could overlap.
+- Oversized document sections are sent to the LLM one piece at a time rather than batched, adding fixed network overhead per call.
+- Chunks are inserted into the database one row at a time rather than in batches.
+- Knowledge graph extraction is slow when run against a local model on the order of minutes per chunk, but drops to seconds per chunk if pointed at a cloud LLM API instead.
+- Ingestion and knowledge-graph building currently run as a single pass, so fast vector data isn't usable until the slow graph step finishes too (the ingestion script already supports `--no-graph` and a graph-only pass to split these, but this isn't the default behavior yet).
+- Hybrid search combines vector and keyword results with a full outer join, which gets slower as the paper library grows; this affects every query, not just ingestion.
+
+**Follow-up questions inconsistently resolve context**
+During testing, follow-up questions sometimes remained correctly scoped to the paper(s) discussed in the previous response (e.g. "give me more details about the medium composition" correctly returned detail from the paper just discussed). However, when a follow-up question asked about information that was not present in the previously discussed paper, the system occasionally retrieved information from a different paper, instead of indicating that the paper did not contain the requested information. This should be investigated further before the system is relied on for multi-turn conversations.
+
+None of these affect the correctness of current answers, they affect how long ingestion takes and how the system will perform once the library is much larger. A full breakdown with suggested fixes for each item exists separately and should be handed to whoever picks up performance work.
 
 ---
 
@@ -572,7 +619,35 @@ In the image above, the agent was asked "What is the transfection efficiency of 
 ![alt text](image-15.png)
 In the image above, the agent was asked "Is the cell differentiation speed increased or decreased without FCS-containing medium". The agent gives the key points of three papers that could answer the question asked. The sources of which paper the this information comes from was also given by the agent. 
 
-## 7. Troubleshooting
+![alt text](image-16.png)
+In the image above the agent is being asked what "In what papers are the doubling time measured and mentioned?". The agent shows two articles: Mi Jang et al., "Serum-free cultures of C2C12 cells" (2022) Scientific Reports 12:827 (DOI: 10.1038/s41598-022-04804-z) and Cochrane et al., "Serum-free media for peripheral blood" (2024) Frontiers in Toxicology (DOI: 10.3389/ftox.2024.1462688). The tool used with the search is shown.
+
+![alt text](image-17.png)
+In the image above the agent is being asked "Which papers mention Lonza as a supplier?". The agent gives as answer the five document names where it was mentioned. It does not give the actual source with the author and DOI.
+
+![alt text](image-22.png)
+![alt text](image-20.png)
+In the image above the agent is being asked "What's the average reported viability across all serum-free protocols?". The agent gives some key findings: in mean viability, median viability, highest viability and lowest viability. It also notes there are some gaps in the data. This shows that the numbers are not entirely accurate as not all the papers have any of this data or have the data in a graphical format and thus is not being read by the agent. Also is shown only 2 papers are being used for this.
+
+### Questions the agent should handle well
+
+- Fact lookup from narrative text: "What doubling time did this paper report for its PBMCs serum-free protocol?" or "What growth factors were included in this serum-free medium?" Anything stated in Methods or Results.
+- Single-paper, single-claim questions: e.g. "Does this paper use xeno-free conditions?" One fact, traceable to one passage.
+- Entity-tagged lookups: e.g. "Which papers mention Lonza as a supplier?" Works via entity search, as long as the term is on the entity list (see below).
+- A question where the answer isn't in any of the papers: when a fact isn't in the retrieved evidence, the agent says so directly instead of guessing. This is an intended behavior, not a bug.
+
+### Questions the agent would not handle well
+
+- Anything requiring a table: e.g. exact medium recipes and concentrations (see Section 7, table extraction).
+- Anything requiring a figure or image: morphology photos, graphs, charts. Not processed by the system at all.
+- Cross-paper comparison or synthesis: e.g. "Which of these three media formulations gave the best viability?" The agent retrieves passages per paper but doesn't synthesize a comparison.
+- Recommendations or judgment calls: e.g. "What medium should I use for my MSC culture?" Out of scope by design, this is a retrieval assistant, not an advisory one.
+- Aggregate or statistical questions across the library: e.g. "What's the average reported viability across all serum-free protocols?" No computation mechanism exists.
+- Relationship questions needing the knowledge graph: e.g. "Which suppliers are most commonly paired with MSC culture across the corpus?" This is exactly what the graph was built for, but it isn't wired to the agent yet (see Section 7), so these questions fall back to plain search and usually return an incomplete or "not found" answer.
+- Author or journal-based questions: not reliably extracted from PDFs (see Section 7).
+- Entity terms not on the hardcoded list: if a paper uses a supplier or cell type not in the entity list, entity search misses it silently, with no warning.
+
+## 8. Troubleshooting
 
 ### The API does not start
 
