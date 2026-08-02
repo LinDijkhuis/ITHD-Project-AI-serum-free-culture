@@ -1,5 +1,10 @@
 # Agentic RAG for Serum-Free Cell Culture Research
 
+
+## Project goal
+This project aims to support researchers in finding evidence for serum-free and xeno-free cell culture media using artificial intelligence. Rather than manually reading hundreds of scientific papers, the system automatically processes publications, lists their content, and retrieves the most relevant evidence to answer research questions. The long-term objective is to assist researchers in identifying suitable serum-free media formulations based on scientific literature.
+
+## Overview
 An AI agent system that combines semantic search with knowledge graph capabilities to analyse scientific literature on serum-free and xeno-free cell culture. Ask plain-English questions about media formulations, cell viability, doubling times, and supplier comparisons and receive answers backed by citations from your own PDF library.
 
 The system retrieves relevant passages from your PDFs first, then asks the AI to write an answer using only those passages, which is why it can cite specific papers and DOIs instead of guessing.
@@ -11,14 +16,16 @@ Built with:
 - Postgres with PGVector for the Vector Database
 - Neo4j for the Knowledge Graph Engine (Graphiti connects to this)
 - FastAPI for the Agent API
-
-## Overview
+  
 
 This system includes three main components:
 
 1. **Document Ingestion Pipeline**: Reads scientific PDF files, detects paper sections (Abstract, Introduction, Methods, Results, Discussion, References), chunks the text intelligently, extracts biomedical entities (cell types, suppliers, culture conditions, assay methods), and builds both vector embeddings and knowledge graph relationships
 2. **AI Agent Interface**: A conversational agent powered by Pydantic AI that searches across the vector database using semantic similarity, keyword matching, and entity-targeted lookup, then writes cited answers
 3. **Streaming API**: FastAPI backend with real-time streaming responses and direct search endpoints
+
+## Current limitations
+The current system successfully retrieves relevant scientific evidence and generates referenced answers. However, it does not yet automatically compare media formulations or recommend serum-free compositions. These capabilities require structured table extraction, concentration extraction, and evidence comparison algorithms.
 
 ## Prerequisites
 
