@@ -24,8 +24,24 @@ This system includes three main components:
 2. **AI Agent Interface**: A conversational agent powered by Pydantic AI that searches across the vector database using semantic similarity, keyword matching, and entity-targeted lookup, then writes cited answers
 3. **Streaming API**: FastAPI backend with real-time streaming responses and direct search endpoints
 
+## Current capabilities
+
+The system can currently:
+- Process scientific PDFs; Converts publications into searchable data.
+- Detect document structure; Recognises sections such as Abstract, Methods and Results.
+- Perform semantic search; Find relevant passages based on meaning rather than keywords.
+- Store scientific relationships; Builds a knowledge graph linking biomedical concepts.
+- Generate evidence-based answers; Produced responses supported by retrieved literature.
+- Cite source publications; References the original scientific papers used in the answer.
+
 ## Current limitations
-The current system successfully retrieves relevant scientific evidence and generates referenced answers. However, it does not yet automatically compare media formulations or recommend serum-free compositions. These capabilities require structured table extraction, concentration extraction, and evidence comparison algorithms.
+
+- Cannot automatically compare formulations between studies.
+- Cannot extract media compositions from tables.
+- Cannot rank evidence quality.
+- Cannot recommend an optimal serum-free formulation.
+- Cannot confidently perform reliable statistical analyses.
+
 
 ## Prerequisites
 
@@ -33,6 +49,13 @@ The current system successfully retrieves relevant scientific evidence and gener
 - PostgreSQL database (such as Neon)
 - Neo4j database (for knowledge graph)
 - LLM Provider API key (OpenAI, Ollama, Gemini, etc.)
+
+## Role of each system component 
+- FastAPI: Provides the API used by the application
+- PostgreSQL: Stores processed literature
+- pgvector: Enables semantic searching
+- Neo4j: Stores relationships between scientific concepts
+- PydanticAI: Controls the AI agent
 
 ## Installation
 
@@ -273,6 +296,18 @@ curl -X POST "http://localhost:8058/chat/stream" \
   }'
 ```
 
+## Rationale for Technology choices
+
+### Why a vector database?
+Scientific articles often describe the same concept using different terminology. A vector database enables semantic searching, allowing the system to retrieve relevant information even when exact keywords are not present.
+
+### Why a knowledge graph?
+Relationships between biological entities, such as cell lines, assays and media components, are stored in a knowledge graph. This preserves scientific context that would otherwise be lost when relying only on semantic search.
+
+### Why combine these components?
+Using both semantic search and a knowledge graph allows the system to retrieve relevant passages while also maintaining relationships between scientific concepts, resulting in more accurate and explainable answers.
+
+
 ## How It Works
 
 ### The Power of Hybrid RAG + Knowledge Graph
@@ -315,6 +350,9 @@ This system combines two complementary approaches:
 3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section
 4. **Flexible LLM Support**: Switch between OpenAI, Ollama, OpenRouter, or Gemini based on your needs and budget
 
+## Current limitations
+The system retrieves and summarises evidence from scientific literature but does not yet automatically compare serum-free media formulations or is able to make recommendations of new formulations. These capabilities require structured extraction of tables and formulation data, which are planned for future development.
+
 ## API Documentation
 
 Visit http://localhost:8058/docs for interactive API documentation once the server is running.
@@ -353,6 +391,24 @@ ITHD-Project-AI-serum-free-culture/
 ├── tests/                   # Test suite
 └── cli.py                   # Interactive command-line interface
 ```
+## Typical Workflow
+
+1. Add scientific PDF papers to the project.
+2. Run the ingestion pipeline.
+3. Store the processed and searchable data.
+4. Ask a research question through the application.
+5. Retrieve the most relevant scientific evidence.
+6. Generate an evidence-based answer with references.
+
+## How document ingestion works
+
+When a new publication is added, the system automatically:
+1. extracts the text from the PDF;
+2. identifies document sections;
+3. divides the content into searchable chunks;
+4. creates semantic embeddings;
+5. extracts relevant biomedical entities;
+6. stores both searchable text and entity relationships.
 
 ## Running Tests
 
@@ -367,6 +423,25 @@ pytest --cov=agent --cov=ingestion --cov-report=html
 pytest tests/agent/
 pytest tests/ingestion/
 ```
+
+## Before modifying the system
+- Ensure the ingestion pipeline still completes successfully.
+- Verify that embeddings are generated correctly
+- Test retrieval quality using example questions.
+- Confirm that citations are still returned.
+- Review application logs for unexpected errors.
+
+## Known challenges
+- Scientific terminology varies greatly between publications.
+- Tables are difficult to extract reliably.
+- Large language models should not be relied upon without retrieved evidence.
+- PDF formatting differs considerably between publishers.
+
+## Starting point further developement
+Developers continuing this project should first focus on improving structured information extraction, particularly tables containing media formulations. This functionality forms the foundation for implementing formulation comparison and, ultimately, evidence-based recommendation generation.
+
+## Component dependencies
+
 
 ## Troubleshooting
 
