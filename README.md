@@ -1,4 +1,4 @@
-# Agentic RAG for Serum-Free Cell Culture Research
+ # Agentic RAG for Serum-Free Cell Culture Research
 
 
 ## Project goal
@@ -441,7 +441,13 @@ pytest tests/ingestion/
 Developers continuing this project should first focus on improving structured information extraction, particularly tables containing media formulations. This functionality forms the foundation for implementing formulation comparison and, ultimately, evidence-based recommendation generation.
 
 ## Component dependencies
-
+| Component | Depends on | Purpose |
+|-----------|------------|---------|
+| Ingestion | PDF parser | Extracts and processes information from scientific papers. Without this step, no searchable data is created. |
+| Embeddings | Chunked text | Converts processed text into vector representations for semantic search. |
+| Knowledge Graph | Entity extraction | Stores relationships between scientific concepts to improve context and retrieval. |
+| Retrieval | Embeddings + Knowledge Graph | Combines semantic search and graph information to find the most relevant scientific evidence. |
+| AI Agent | Retrieval | Generates evidence-based answers using retrieved information instead of relying solely on the language model's internal knowledge. |
 
 ## Troubleshooting
 
