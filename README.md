@@ -42,6 +42,33 @@ The system can currently:
 - Cannot recommend an optimal serum-free formulation.
 - Cannot confidently perform reliable statistical analyses.
 
+## System architecture
+
+```text
+                   Scientific PDFs
+                          │
+                          ▼
+                Document Ingestion
+                          │
+              ┌───────────┴───────────┐
+              ▼                       ▼
+   PostgreSQL + pgvector          Neo4j
+   (Semantic Search)       (Knowledge Graph)
+              │                       │
+              └───────────┬───────────┘
+                          ▼
+                PydanticAI Agent
+                          │
+                          ▼
+              Evidence-Based Answer
+```
+
+## Technology Overview
+- FastAPI: Provides the API used by the application
+- PostgreSQL: Stores processed literature
+- pgvector: Enables semantic searching
+- Neo4j: Stores relationships between scientific concepts
+- PydanticAI: Controls the AI agent
 
 ## Prerequisites
 
@@ -50,12 +77,6 @@ The system can currently:
 - Neo4j database (for knowledge graph)
 - LLM Provider API key (OpenAI, Ollama, Gemini, etc.)
 
-## Technology Overview
-- FastAPI: Provides the API used by the application
-- PostgreSQL: Stores processed literature
-- pgvector: Enables semantic searching
-- Neo4j: Stores relationships between scientific concepts
-- PydanticAI: Controls the AI agent
 
 ## Installation
 
@@ -353,20 +374,6 @@ This system combines two complementary approaches:
 ## Current limitations
 The system retrieves and summarises evidence from scientific literature but does not yet automatically compare serum-free media formulations or can recommend new formulations. These capabilities require structured extraction of tables and formulation data, which are planned for future development.
 
-## API Documentation
-
-Visit http://localhost:8058/docs for interactive API documentation once the server is running.
-
-## Key Features
-
-- **PDF Support**: Reads scientific PDFs directly — no conversion step needed; detects IMRaD sections automatically
-- **Semantic + Keyword Search**: Finds relevant passages by meaning, by exact terms, or by both combined
-- **Entity Search**: Filter results by cell type, supplier, culture condition, assay method, or institution
-- **No Fabrication**: Agent is instructed to report "not found in this study" rather than estimating missing values
-- **Streaming Responses**: Real-time AI responses with Server-Sent Events
-- **Flexible Providers**: Support for multiple LLM and embedding providers including local (Ollama)
-- **Session Memory**: Conversation history is stored so follow-up questions work naturally
-
 ## Project Structure
 
 ```
@@ -409,6 +416,21 @@ When a new publication is added, the system automatically:
 4. creates semantic embeddings;
 5. extracts relevant biomedical entities;
 6. stores both searchable text and entity relationships.
+
+## API Documentation
+
+Visit http://localhost:8058/docs for interactive API documentation once the server is running.
+
+## Key Features
+
+- **PDF Support**: Reads scientific PDFs directly — no conversion step needed; detects IMRaD sections automatically
+- **Semantic + Keyword Search**: Finds relevant passages by meaning, by exact terms, or by both combined
+- **Entity Search**: Filter results by cell type, supplier, culture condition, assay method, or institution
+- **No Fabrication**: Agent is instructed to report "not found in this study" rather than estimating missing values
+- **Streaming Responses**: Real-time AI responses with Server-Sent Events
+- **Flexible Providers**: Support for multiple LLM and embedding providers including local (Ollama)
+- **Session Memory**: Conversation history is stored so follow-up questions work naturally
+  
 
 ## Running Tests
 Run the tests after modifying the system to verify that ingestion, retrieval, and API functionality continue to operate correctly.
