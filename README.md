@@ -36,6 +36,8 @@ The system can currently:
 
 ## Current limitations
 
+The current implementation successfully retrieves and summarises evidence from scientific literature. However, several capabilities required to generate evidence-based serum-free media recommendations have not yet been implemented.
+
 - Cannot automatically compare formulations between studies.
 - Cannot extract media compositions from tables.
 - Cannot rank evidence quality.
@@ -370,9 +372,6 @@ This system combines two complementary approaches:
 2. **Prevents Numerical Hallucinations**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times — only to report what is written in the retrieved passages
 3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section
 4. **Flexible LLM Support**: Switch between OpenAI, Ollama, OpenRouter, or Gemini based on your needs and budget
-
-## Current limitations
-The system retrieves and summarises evidence from scientific literature but does not yet automatically compare serum-free media formulations or can recommend new formulations. These capabilities require structured extraction of tables and formulation data, which are planned for future development.
 
 ## Project Structure
 
