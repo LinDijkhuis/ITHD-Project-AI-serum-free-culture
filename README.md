@@ -2,14 +2,14 @@
 
 
 ## Project goal
-This project aims to support researchers in finding evidence for serum-free and xeno-free cell culture media using artificial intelligence. Rather than manually reading hundreds of scientific papers, the system automatically processes publications, lists their content, and retrieves the most relevant evidence to answer research questions. The long-term objective is to assist researchers in identifying suitable serum-free media formulations based on scientific literature.
+This project aims to support researchers in finding evidence for serum-free and xeno-free cell culture media using artificial intelligence. Rather than manually reading hundreds of scientific papers, the system automatically processes publications, extracts and organises their contents, and retrieves the most relevant evidence to answer research questions. The long-term objective is to assist researchers in identifying suitable serum-free media formulations based on scientific literature.
 
 ## Overview
-An AI agent system that combines semantic search with knowledge graph capabilities to analyse scientific literature on serum-free and xeno-free cell culture. Ask plain-English questions about media formulations, cell viability, doubling times, and supplier comparisons and receive answers backed by citations from your own PDF library.
+An AI agent system that combines semantic search with knowledge graph capabilities to analyse scientific literature on serum-free and xeno-free cell culture. Users can ask questions in their own words about media formulations, cell viability, doubling times, supplier comparisons, and related topics. The system returns answers supported by citations from the indexed PDF library.
 
 The system retrieves relevant passages from your PDFs first, then asks the AI to write an answer using only those passages, which is why it can cite specific papers and DOIs instead of guessing.
 
-Built with:
+The system is built using:
 
 - Pydantic AI for the AI Agent Framework
 - Graphiti for the Knowledge Graph
@@ -28,10 +28,10 @@ This system includes three main components:
 
 The system can currently:
 - Process scientific PDFs; Converts publications into searchable data.
-- Detect document structure; Recognises sections such as Abstract, Methods and Results.
-- Perform semantic search; Find relevant passages based on meaning rather than keywords.
+- Detect document structure; Recognises sections such as **Abstract, Methods and Results**.
+- Perform semantic search; Finds relevant passages based on meaning rather than keywords.
 - Store scientific relationships; Builds a knowledge graph linking biomedical concepts.
-- Generate evidence-based answers; Produced responses supported by retrieved literature.
+- Generate evidence-based answers; Produces responses supported by retrieved literature.
 - Cite source publications; References the original scientific papers used in the answer.
 
 ## Current limitations
@@ -50,7 +50,7 @@ The system can currently:
 - Neo4j database (for knowledge graph)
 - LLM Provider API key (OpenAI, Ollama, Gemini, etc.)
 
-## Role of each system component 
+## Technology Overview
 - FastAPI: Provides the API used by the application
 - PostgreSQL: Stores processed literature
 - pgvector: Enables semantic searching
@@ -177,7 +177,7 @@ LLM_CHOICE=gemini-2.5-flash
 
 ### 1. Prepare Your Documents
 
-Add your PDF research papers to the `source_papers/` folder. The folder already contains 15 papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion — you do not need to convert PDFs to any other format first.
+Add your scientific PDF papers to the `source_papers/` folder. The folder already contains 15 papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion — you do not need to convert PDFs to any other format first.
 
 ### 2. Run Document Ingestion
 
@@ -205,7 +205,7 @@ Note that ingestion can take a while, especially if semantic chunking or knowled
 
 ### 3. Configure Agent Behaviour (Optional)
 
-Before running the API server, you can customise when the agent uses different tools by modifying the system prompt in `agent/prompts.py`. The system prompt controls which metrics the agent extracts, how it compares FBS vs. FBS-free conditions, and when to use each search tool.
+Before running the API server, you can customise when the agent uses different tools by modifying the system prompt in `agent/prompts.py`. This is the main location for changing how the AI reasons about scientific literature and selects search strategies. The system prompt controls which metrics the agent extracts, how it compares FBS vs. FBS-free conditions, and when to use each search tool.
 
 ### 4. Start the API Server (Terminal 1)
 
@@ -346,12 +346,12 @@ This system combines two complementary approaches:
 ### Why This Architecture Works Well
 
 1. **Complementary Strengths**: Semantic search finds related content regardless of wording; the knowledge graph reveals connections between entities across papers
-2. **No Hallucination on Numbers**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times — only to report what is written in the retrieved passages
+2. **Prevents Numerical Hallucinations**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times — only to report what is written in the retrieved passages
 3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section
 4. **Flexible LLM Support**: Switch between OpenAI, Ollama, OpenRouter, or Gemini based on your needs and budget
 
 ## Current limitations
-The system retrieves and summarises evidence from scientific literature but does not yet automatically compare serum-free media formulations or is able to make recommendations of new formulations. These capabilities require structured extraction of tables and formulation data, which are planned for future development.
+The system retrieves and summarises evidence from scientific literature but does not yet automatically compare serum-free media formulations or can recommend new formulations. These capabilities require structured extraction of tables and formulation data, which are planned for future development.
 
 ## API Documentation
 
@@ -371,7 +371,7 @@ Visit http://localhost:8058/docs for interactive API documentation once the serv
 
 ```
 ITHD-Project-AI-serum-free-culture/
-├── agent/                    # AI agent and API
+├── agent/                   # Contains the conversational AI, API and retrieval logic.
 │   ├── agent.py             # Pydantic AI agent with registered tools
 │   ├── api.py               # FastAPI application and endpoints
 │   ├── db_utils.py          # PostgreSQL connection and query functions
@@ -380,7 +380,7 @@ ITHD-Project-AI-serum-free-culture/
 │   ├── prompts.py           # System prompt controlling agent behaviour
 │   ├── providers.py         # LLM and embedding provider abstraction
 │   └── tools.py             # Agent tool implementations
-├── ingestion/               # Document processing pipeline
+├── ingestion/               # Processes scientific papers into searchable knowledge.
 │   ├── ingest.py            # Main ingestion orchestration
 │   ├── pdf_parser.py        # PDF reading and IMRaD section detection
 │   ├── chunker.py           # Semantic and rule-based chunking
@@ -395,7 +395,7 @@ ITHD-Project-AI-serum-free-culture/
 
 1. Add scientific PDF papers to the project.
 2. Run the ingestion pipeline.
-3. Store the processed and searchable data.
+3. Store the processed information in the vector database and knowledge graph.
 4. Ask a research question through the application.
 5. Retrieve the most relevant scientific evidence.
 6. Generate an evidence-based answer with references.
@@ -411,6 +411,7 @@ When a new publication is added, the system automatically:
 6. stores both searchable text and entity relationships.
 
 ## Running Tests
+Run the tests after modifying the system to verify that ingestion, retrieval, and API functionality continue to operate correctly.
 
 ```bash
 # Run all tests
@@ -426,7 +427,7 @@ pytest tests/ingestion/
 
 ## Before modifying the system
 - Ensure the ingestion pipeline still completes successfully.
-- Verify that embeddings are generated correctly
+- Verify that embeddings are generated correctly.
 - Test retrieval quality using example questions.
 - Confirm that citations are still returned.
 - Review application logs for unexpected errors.
@@ -437,11 +438,11 @@ pytest tests/ingestion/
 - Large language models should not be relied upon without retrieved evidence.
 - PDF formatting differs considerably between publishers.
 
-## Starting point further developement
-Developers continuing this project should first focus on improving structured information extraction, particularly tables containing media formulations. This functionality forms the foundation for implementing formulation comparison and, ultimately, evidence-based recommendation generation.
+## Starting point for further development
+Developers continuing this project should first focus on improving structured information extraction, particularly the extraction of media formulations from scientific tables. This functionality forms the foundation for implementing formulation comparison and, ultimately, evidence-based recommendation generation.
 
 ## Component dependencies
-| Component | Depends on | Purpose |
+| Component | Depends on | Why it matters |
 |-----------|------------|---------|
 | Ingestion | PDF parser | Extracts and processes information from scientific papers. Without this step, no searchable data is created. |
 | Embeddings | Chunked text | Converts processed text into vector representations for semantic search. |
