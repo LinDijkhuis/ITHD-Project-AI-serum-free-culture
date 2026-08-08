@@ -4,10 +4,14 @@
 ## Project goal
 This project aims to support researchers in finding evidence for serum-free and xeno-free cell culture media using artificial intelligence. Rather than manually reading hundreds of scientific papers, the system automatically processes publications, extracts and organises their contents, and retrieves the most relevant evidence to answer research questions. The long-term objective is to assist researchers in identifying suitable serum-free media formulations based on scientific literature.
 
+The current implementation provides a complete retrieval-augmented generation (RAG) pipeline for scientific literature analysis. It is intended as a foundation for future development toward automated comparison and recommendation of serum-free media formulations.
+
+
 ## Overview
 An AI agent system that combines semantic search with knowledge graph capabilities to analyse scientific literature on serum-free and xeno-free cell culture. Users can ask questions in their own words about media formulations, cell viability, doubling times, supplier comparisons, and related topics. The system returns answers supported by citations from the indexed PDF library.
 
-The system retrieves relevant passages from your PDFs first, then asks the AI to write an answer using only those passages, which is why it can cite specific papers and DOIs instead of guessing.
+The system retrieves relevant passages from your PDFs first, then instructs the language model to generate an answer based only on those retrieved passages.
+Which is why it can cite specific papers and DOIs instead of guessing.
 
 The system is built using:
 
@@ -16,33 +20,41 @@ The system is built using:
 - Postgres with PGVector for the Vector Database
 - Neo4j for the Knowledge Graph Engine (Graphiti connects to this)
 - FastAPI for the Agent API
-  
 
+
+### Main components
 This system includes three main components:
 
-1. **Document Ingestion Pipeline**: Reads scientific PDF files, detects paper sections (Abstract, Introduction, Methods, Results, Discussion, References), chunks the text intelligently, extracts biomedical entities (cell types, suppliers, culture conditions, assay methods), and builds both vector embeddings and knowledge graph relationships
-2. **AI Agent Interface**: A conversational agent powered by Pydantic AI that searches across the vector database using semantic similarity, keyword matching, and entity-targeted lookup, then writes cited answers
-3. **Streaming API**: FastAPI backend with real-time streaming responses and direct search endpoints
+| Component | Main function |
+|---|---|
+| **Document Ingestion Pipeline** | Processes scientific PDFs by detecting paper sections, splitting text into searchable chunks, extracting biomedical entities, and creating vector embeddings and knowledge graph relationships. |
+| **AI Agent Interface** | Searches the processed literature using semantic search, keyword matching, and entity-based lookup, then generates answers with citations. |
+| **Streaming API** | Provides access to the AI agent and search functionality through a FastAPI backend, with real-time response streaming and direct search endpoints. |
 
 ## Current capabilities
 
 The system can currently:
-- Process scientific PDFs; Converts publications into searchable data.
-- Detect document structure; Recognises sections such as **Abstract, Methods and Results**.
-- Perform semantic search; Finds relevant passages based on meaning rather than keywords.
-- Store scientific relationships; Builds a knowledge graph linking biomedical concepts.
-- Generate evidence-based answers; Produces responses supported by retrieved literature.
-- Cite source publications; References the original scientific papers used in the answer.
+
+| Capability | What it does |
+|---|---|
+| **Process scientific PDFs** | Converts scientific publications into searchable data. |
+| **Detect document structure** | Identifies sections such as **Abstract, Methods, and Results**. |
+| **Perform semantic search** | Finds relevant passages based on meaning rather than exact keyword matches. |
+| **Store scientific relationships** | Builds a knowledge graph linking biomedical concepts and their relationships. |
+| **Generate evidence-based answers** | Produces responses based on information retrieved from the indexed literature. |
+| **Cite source publications** | References the original scientific papers used to generate an answer. |
 
 ## Current limitations
 
 The current implementation successfully retrieves and summarises evidence from scientific literature. However, several capabilities required to generate evidence-based serum-free media recommendations have not yet been implemented.
 
-- Cannot automatically compare formulations between studies.
-- Cannot extract media compositions from tables.
-- Cannot rank evidence quality.
-- Cannot recommend an optimal serum-free formulation.
-- Cannot confidently perform reliable statistical analyses.
+| Limitation | What is currently missing |
+|---|---|
+| **Formulation comparison** | Cannot automatically compare media formulations between studies. |
+| **Table extraction** | Cannot reliably extract media compositions from tables. |
+| **Evidence quality assessment** | Cannot automatically rank or assess the quality of evidence. |
+| **Formulation recommendation** | Cannot recommend an optimal serum-free formulation based on the retrieved evidence. |
+| **Statistical analysis** | Cannot yet perform reliable statistical analyses or draw statistically sound conclusions. |
 
 ## System architecture
 
@@ -65,6 +77,17 @@ The current implementation successfully retrieves and summarises evidence from s
               Evidence-Based Answer
 ```
 
+## Rationale for Technology choices
+
+### Why a vector database?
+Scientific articles often describe the same concept using different terminology. A vector database enables semantic searching, allowing the system to retrieve relevant information even when exact keywords are not present.
+
+### Why a knowledge graph?
+Relationships between biological entities, such as cell lines, assays and media components, are stored in a knowledge graph. This preserves scientific context that would otherwise be lost when relying only on semantic search.
+
+### Why combine these components?
+Using both semantic search and a knowledge graph allows the system to retrieve relevant passages while also maintaining relationships between scientific concepts, resulting in more accurate and explainable answers.
+
 ## Technology Overview
 - FastAPI: Provides the API used by the application
 - PostgreSQL: Stores processed literature
@@ -72,12 +95,13 @@ The current implementation successfully retrieves and summarises evidence from s
 - Neo4j: Stores relationships between scientific concepts
 - PydanticAI: Controls the AI agent
 
+
 ## Prerequisites
 
 - Python 3.11 or higher
+- LLM Provider API key (OpenAI, Ollama, Gemini, etc.)
 - PostgreSQL database (such as Neon)
 - Neo4j database (for knowledge graph)
-- LLM Provider API key (OpenAI, Ollama, Gemini, etc.)
 
 
 ## Installation
@@ -228,7 +252,7 @@ Note that ingestion can take a while, especially if semantic chunking or knowled
 
 ### 3. Configure Agent Behaviour (Optional)
 
-Before running the API server, you can customise when the agent uses different tools by modifying the system prompt in `agent/prompts.py`. This is the main location for changing how the AI reasons about scientific literature and selects search strategies. The system prompt controls which metrics the agent extracts, how it compares FBS vs. FBS-free conditions, and when to use each search tool.
+Before running the API server, you can customise when the agent uses different tools by modifying the system prompt in `agent/prompts.py`. The system prompt controls which metrics the agent extracts, how it compares FBS and FBS-free conditions, and when each retrieval tool is used.
 
 ### 4. Start the API Server (Terminal 1)
 
@@ -319,17 +343,6 @@ curl -X POST "http://localhost:8058/chat/stream" \
   }'
 ```
 
-## Rationale for Technology choices
-
-### Why a vector database?
-Scientific articles often describe the same concept using different terminology. A vector database enables semantic searching, allowing the system to retrieve relevant information even when exact keywords are not present.
-
-### Why a knowledge graph?
-Relationships between biological entities, such as cell lines, assays and media components, are stored in a knowledge graph. This preserves scientific context that would otherwise be lost when relying only on semantic search.
-
-### Why combine these components?
-Using both semantic search and a knowledge graph allows the system to retrieve relevant passages while also maintaining relationships between scientific concepts, resulting in more accurate and explainable answers.
-
 
 ## How It Works
 
@@ -355,7 +368,7 @@ This system combines two complementary approaches:
 ### Example Queries
 
 - **Metric lookup**: "What viability percentages were reported for HEK293 cells in chemically defined media?"
-  — uses vector search to find passages reporting that specific measurement
+  — the agent primarily uses vector search to find passages reporting that specific measurement
 
 - **Entity-targeted**: "Which suppliers were used in xeno-free protocols for neural stem cells?"
   — uses entity search filtered by cell type and supplier category
@@ -406,7 +419,7 @@ ITHD-Project-AI-serum-free-culture/
 5. Retrieve the most relevant scientific evidence.
 6. Generate an evidence-based answer with references.
 
-## How document ingestion works
+## How Document Ingestion Works
 
 When a new publication is added, the system automatically:
 1. extracts the text from the PDF;
@@ -422,14 +435,14 @@ Visit http://localhost:8058/docs for interactive API documentation once the serv
 
 ## Key Features
 
-- **PDF Support**: Reads scientific PDFs directly — no conversion step needed; detects IMRaD sections automatically
-- **Semantic + Keyword Search**: Finds relevant passages by meaning, by exact terms, or by both combined
-- **Entity Search**: Filter results by cell type, supplier, culture condition, assay method, or institution
-- **No Fabrication**: Agent is instructed to report "not found in this study" rather than estimating missing values
-- **Streaming Responses**: Real-time AI responses with Server-Sent Events
-- **Flexible Providers**: Support for multiple LLM and embedding providers including local (Ollama)
-- **Session Memory**: Conversation history is stored so follow-up questions work naturally
-  
+| Key feature | What it does |
+|---|---|
+| **PDF support** | Processes scientific PDF files directly without requiring a separate conversion step and automatically detects document sections such as **Abstract, Methods, Results, and Discussion**. |
+| **Semantic and keyword search** | Finds relevant passages based on meaning, exact terms, or a combination of both. |
+| **Entity search** | Allows results to be filtered by biomedical entities such as cell type, supplier, culture condition, assay method, or institution. |
+| **Evidence-grounded responses** | Instructs the AI agent to report when information is not found in the available literature rather than estimating or inventing missing values. |
+| **Streaming responses** | Provides AI responses in real time using Server-Sent Events (SSE). |
+| **Flexible providers** | Supports multiple LLM and embedding providers, including locally hosted models through Ollama. |
 
 ## Running Tests
 Run the tests after modifying the system to verify that ingestion, retrieval, and API functionality continue to operate correctly.
