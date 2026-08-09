@@ -10,14 +10,14 @@ The current implementation provides a complete retrieval-augmented generation (R
 ## Overview
 An AI agent system that combines semantic search with knowledge graph capabilities to analyse scientific literature on serum-free and xeno-free cell culture. Users can ask questions in their own words about media formulations, cell viability, doubling times, supplier comparisons, and related topics. The system returns answers supported by citations from the indexed PDF library.
 
-The system retrieves relevant passages from your PDFs first, then instructs the language model to generate an answer based only on those retrieved passages.
-Which is why it can cite specific papers and DOIs instead of guessing.
+The system first retrieves relevant passages from your PDFs, then instructs the language model to generate an answer based only on those retrieved passages.
+This allows the system to cite specific papers and DOIs rather than relying on unsupported information.
 
 The system is built using:
 
 - Pydantic AI for the AI Agent Framework
 - Graphiti for the Knowledge Graph
-- Postgres with PGVector for the Vector Database
+- PostgreSQLs with pgvector for the Vector Database
 - Neo4j for the Knowledge Graph Engine (Graphiti connects to this)
 - FastAPI for the Agent API
 
@@ -27,7 +27,7 @@ This system includes three main components:
 
 | Component | Main function |
 |---|---|
-| **Document Ingestion Pipeline** | Processes scientific PDFs by detecting paper sections, splitting text into searchable chunks, extracting biomedical entities, and creating vector embeddings and knowledge graph relationships. |
+| **Document Ingestion Pipeline** | Processes scientific PDF files by detecting paper sections, splitting text into searchable chunks, extracting biomedical entities, and creating vector embeddings and knowledge graph relationships. |
 | **AI Agent Interface** | Searches the processed literature using semantic search, keyword matching, and entity-based lookup, then generates answers with citations. |
 | **Streaming API** | Provides access to the AI agent and search functionality through a FastAPI backend, with real-time response streaming and direct search endpoints. |
 
@@ -99,8 +99,8 @@ Using both semantic search and a knowledge graph allows the system to retrieve r
 ## Prerequisites
 
 - Python 3.11 or higher
-- LLM Provider API key (OpenAI, Ollama, Gemini, etc.)
-- PostgreSQL database (such as Neon)
+- LLM provider API key (OpenAI, Ollama, Gemini, etc.)
+- PostgreSQL database (for example, a Neon-hosted PostgreSQL database)
 - Neo4j database (for knowledge graph)
 
 
@@ -123,7 +123,7 @@ This script will:
 
 After it finishes, activate the environment with `source venv/bin/activate` and skip to [step 5 (Configure environment variables)](#5-configure-environment-variables).
 
-> **Note:** `setup.sh` uses `sudo apt` and Docker, so it is intended for Linux (Ubuntu/Debian). On Windows or macOS follow Option B below.
+> **Note:** `setup.sh` uses `sudo apt` and Docker, so it is intended for Linux (Ubuntu/Debian). On Windows or macOS, follow Option B below.
 
 ---
 
@@ -150,7 +150,7 @@ Execute the SQL in `sql/schema.sql` to create all necessary tables, indexes, and
 
 Be sure to change the embedding dimensions on lines 31, 67, and 100 based on your embedding model. OpenAI's text-embedding-3-small is 1536 and nomic-embed-text from Ollama is 768 dimensions, for reference.
 
-Note that this script will drop all tables before creating/recreating them.
+**Warning:** This script drops all existing tables before recreating them.
 
 #### 4. Set up Neo4j
 
@@ -274,15 +274,23 @@ python cli.py --port 8080
 
 #### CLI Features
 
-- **Real-time streaming responses** — see the agent's answer as it is generated
-- **Tool usage visibility** — understand which tools the agent used:
-  - `vector_search` — semantic similarity search across paper chunks
-  - `hybrid_search` — combined vector + keyword search
-  - `search_by_entity` — targeted lookup by cell type, supplier, culture condition, assay method, or institution
-  - `get_document` — retrieve the full content of a specific paper
-  - `list_documents` — browse all indexed papers
-- **Session management** — maintains conversation context across questions
-- **Color-coded output** — easy to read responses and tool information
+| Feature | Description |
+|---|---|
+| **Real-time streaming responses** | Displays the agent's answer as it is generated. |
+| **Tool usage visibility** | Shows which search tools the agent used. |
+| **Session management** | Maintains conversation context across questions. |
+| **Colour-coded output** | Makes responses and tool information easier to read. |
+
+**Available search tools:**
+
+| Tool | Description |
+|---|---|
+| `vector_search` | Semantic similarity search across paper chunks. |
+| `hybrid_search` | Combines vector and keyword search. |
+| `search_by_entity` | Targeted search by cell type, supplier, culture condition, assay method, or institution. |
+| `get_document` | Retrieves the full content of a specific paper. |
+| `list_documents` | Lists all indexed papers. |
+
 
 #### Example CLI Session
 
@@ -313,10 +321,12 @@ Lonza and CellGenix were cited in multiple xeno-free protocols across the indexe
 
 #### CLI Commands
 
-- `help` — show available commands
-- `health` — check API connection status
-- `clear` — clear current session
-- `exit` or `quit` — exit the CLI
+| Command | Description |
+|---|---|
+| `help` | Shows available commands. |
+| `health` | Checks the API connection status. |
+| `clear` | Clears the current session. |
+| `exit` / `quit` | Exits the CLI. |
 
 ### 6. Test the System
 
@@ -351,19 +361,19 @@ curl -X POST "http://localhost:8058/chat/stream" \
 This system combines two complementary approaches:
 
 **Vector Database (PostgreSQL + pgvector)**:
-- Semantic similarity search across paper chunks — finds relevant passages even when the wording differs from your question
-- Hybrid search combines semantic similarity with keyword matching for broader coverage
-- Entity search filters results by specific biomedical entities (e.g. all chunks mentioning "Lonza" as a supplier)
+- **Semantic similarity search across paper chunks:** Finds relevant passages even when the wording differs from your question
+- **Hybrid search:** Combines semantic similarity with keyword matching for broader coverage
+- **Entity search:** Filters results by specific biomedical entities, such as all chunks mentioning "Lonza" as a supplier.
 
 **Knowledge Graph (Neo4j + Graphiti)**:
-- Tracks relationships between entities across papers — useful for understanding which media formulations and suppliers appear alongside particular cell types or outcomes
-- Graph traversal for discovering connections between studies
+-  **Relationship tracking:** Tracks relationships between entities across papers, such as which media formulations and suppliers appear alongside particular cell types or outcomes.
+- **Graph traversal:** for discovering connections between studies
 
 **Intelligent Agent**:
-- Automatically chooses the best search strategy for each question
-- Combines results from multiple searches when needed
-- Always cites paper title, authors, DOI or PMID — never fabricates values
-- If a metric is not reported in a paper, it says so explicitly
+- **Search strategy selection:** Automatically chooses the most appropriate search strategy for each question.
+- **Multi-tool retrieval:** Combines results from multiple searches when needed.
+- **Source citation:** Cites the paper title, authors, DOI, or PMID and does not fabricate values.
+- **Missing information handling:** Explicitly states when a metric is not reported in a paper.
 
 ### Example Queries
 
@@ -381,10 +391,10 @@ This system combines two complementary approaches:
 
 ### Why This Architecture Works Well
 
-1. **Complementary Strengths**: Semantic search finds related content regardless of wording; the knowledge graph reveals connections between entities across papers
-2. **Prevents Numerical Hallucinations**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times — only to report what is written in the retrieved passages
+1. **Complementary Strengths**: Semantic search finds related content regardless of wording. The knowledge graph reveals connections between entities across papers.
+2. **Prevents Numerical Hallucinations**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times. It only reports values stated in the retrieved passages.
 3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section
-4. **Flexible LLM Support**: Switch between OpenAI, Ollama, OpenRouter, or Gemini based on your needs and budget
+4. **Flexible LLM Support**: The system can switch between OpenAI, Ollama, OpenRouter, or Gemini based on user requirements and budget
 
 ## Project Structure
 
@@ -422,12 +432,13 @@ ITHD-Project-AI-serum-free-culture/
 ## How Document Ingestion Works
 
 When a new publication is added, the system automatically:
-1. extracts the text from the PDF;
-2. identifies document sections;
-3. divides the content into searchable chunks;
-4. creates semantic embeddings;
-5. extracts relevant biomedical entities;
-6. stores both searchable text and entity relationships.
+
+1. **Extracts the text:** Reads the content of the PDF.
+2. **Identifies document sections:** Detects sections such as Abstract, Methods, and Results.
+3. **Creates searchable chunks:** Divides the text into smaller sections for retrieval.
+4. **Generates embeddings:** Converts the chunks into vector representations for semantic search.
+5. **Extracts biomedical entities:** Identifies relevant entities such as cell types, suppliers, and culture conditions.
+6. **Stores the processed information:** Saves searchable text and entity relationships in PostgreSQL and Neo4j.
 
 ## API Documentation
 
