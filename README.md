@@ -108,6 +108,11 @@ Using both semantic search and a knowledge graph allows the system to retrieve r
 
 ### Option A: Automated setup (Linux only)
 
+Open a terminal and navigate to the directory containing the file:
+```bash
+cd <path_to_file_location>
+```
+
 On Linux, `setup.sh` handles all installation steps in one command:
 
 ```bash
@@ -133,9 +138,15 @@ After it finishes, activate the environment with `source venv/bin/activate` and 
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Linux/macOS
-# or
-venv\Scripts\activate     # On Windows
+
+# On Linux/macOS
+source venv/bin/activate  
+
+# On Windows (Command prompt)
+venv\Scripts\activate     # On Windows (Command prompt)
+
+# Windows (PowerShell)
+venv\Scripts\Activate.ps1
 ```
 
 #### 2. Install dependencies
@@ -146,18 +157,26 @@ pip install -r requirements.txt
 
 #### 3. Set up required tables in Postgres
 
-Execute the SQL in `sql/schema.sql` to create all necessary tables, indexes, and functions.
+Run the following command to execute sql/schema.sql and create all necessary tables, indexes, and functions:
 
-Be sure to change the embedding dimensions on lines 31, 67, and 100 based on your embedding model. OpenAI's text-embedding-3-small is 1536 and nomic-embed-text from Ollama is 768 dimensions, for reference.
+```bash
+python apply_schema.py
+```
+
+Be sure to change the embedding dimensions on lines 31, 67, and 100 based on your embedding model. OpenAI's text-embedding-3-small uses 1536 dimensions, while nomic-embed-text from Ollama uses 768 dimensions.
 
 **Warning:** This script drops all existing tables before recreating them.
 
 #### 4. Set up Neo4j
 
 #### Option A: Using Local-AI-Packaged (Simplified setup - Recommended)
-1. Clone the repository: `git clone https://github.com/coleam00/local-ai-packaged`
-2. Follow the installation instructions to set up Neo4j through the package
-3. Note the username and password you set in .env and the URI will be bolt://localhost:7687
+1. Clone the Local AI Packaged repository using the stable branch:
+ ```bash
+git clone https://github.com/coleam00/local-ai-packaged.git
+cd local-ai-packaged
+ ```
+2. Follow the installation instructions in the repository to start Neo4j using Docker Compose.
+3. Note the Neo4j username and password configured in the example.env file. The default URI used by this project is: bolt://localhost:7687
 
 #### Option B: Using Neo4j Desktop
 1. Download and install [Neo4j Desktop](https://neo4j.com/download/)
@@ -205,7 +224,7 @@ For other LLM providers:
 LLM_PROVIDER=ollama
 LLM_BASE_URL=http://localhost:11434/v1
 LLM_API_KEY=ollama
-LLM_CHOICE=qwen3:32b-instruct
+LLM_CHOICE=qwen3:32b
 
 # OpenRouter
 LLM_PROVIDER=openrouter
@@ -455,6 +474,13 @@ Visit http://localhost:8058/docs for interactive API documentation once the serv
 | **Streaming responses** | Provides AI responses in real time using Server-Sent Events (SSE). |
 | **Flexible providers** | Supports multiple LLM and embedding providers, including locally hosted models through Ollama. |
 
+## Before modifying the system
+- Ensure the ingestion pipeline still completes successfully.
+- Verify that embeddings are generated correctly.
+- Test retrieval quality using example questions.
+- Confirm that citations are still returned.
+- Review application logs for unexpected errors.
+
 ## Running Tests
 Run the tests after modifying the system to verify that ingestion, retrieval, and API functionality continue to operate correctly.
 
@@ -469,13 +495,6 @@ pytest --cov=agent --cov=ingestion --cov-report=html
 pytest tests/agent/
 pytest tests/ingestion/
 ```
-
-## Before modifying the system
-- Ensure the ingestion pipeline still completes successfully.
-- Verify that embeddings are generated correctly.
-- Test retrieval quality using example questions.
-- Confirm that citations are still returned.
-- Review application logs for unexpected errors.
 
 ## Known challenges
 - Scientific terminology varies greatly between publications.
