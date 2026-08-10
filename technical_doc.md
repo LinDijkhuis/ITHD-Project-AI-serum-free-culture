@@ -124,7 +124,7 @@ Serum-free cell culture research is scattered across many papers with inconsiste
 
 **Hardware**
 
-- RAM: minimum 8 GB (16 GB recommended for qwen2.5:7b)
+- RAM: minimum 8 GB (16 GB recommended for qwen3:32b)
 - Storage: minimum 10 GB free (models + Docker images)
 - CPU: 4+ cores recommended
 
@@ -180,7 +180,7 @@ This automatically installs:
 - Python virtual environment and all dependencies
 - PostgreSQL schema on Neon
 - Neo4j via Docker
-- Ollama with the required models (`nomic-embed-text`, `qwen2.5:7b`)
+- Ollama with the required models (`nomic-embed-text`, `qwen3:32b`)
 
 **Step 4 — Activate the environment**
 
@@ -683,7 +683,7 @@ Make sure the model was pulled before running:
 
 ```bash
 ollama pull nomic-embed-text
-ollama pull qwen2.5:7b
+ollama pull qwen3:32b
 ```
 
 List installed models to confirm:
