@@ -12,7 +12,7 @@
 
 **Why this exists:** Researchers working on serum-free and xeno-free cell culture have to manually dig through dozens of papers to answer basic questions: what medium was used, what viability was reported, which supplier. This project was built to remove that manual search step: ask a question in plain English, get an answer backed by direct citations to the original papers, not the AI's general knowledge.
 
-**Status:** [The core system works and is reliable: it reads PDFs, searches them by meaning, and answers with citations. Two things are still in progress: it also builds a relationship map that isn't used in answers yet, and it hasn't been tested on large paper libraries.]
+**Status:** The core retrieval system works and has been verified on a small collection of papers. It reads PDFs, searches them by meaning, and keywords, and generates answers with citations. Two things are still in progress: the knowledge graph is built but is not yet used during question answering, and the system has not been evaluated for performance at large scale.
 
 **How it works, in one paragraph:** 
 PDFs are ingested and split into searchable sections. When you ask a question, the system searches those sections for relevant passages first, then asks the AI to answer using only those passages. Which is why it can cite specific papers and DOIs 
@@ -425,13 +425,16 @@ flowchart TD
     B --> C[Determine Retrieval Strategy]
     C --> D[Vector Search]
     C --> E[Hybrid Search]
-    C --> F[Graph Search]
+    C --> F[Entity Search]
     D --> G[Retrieve Relevant Evidence]
     E --> G
     F --> G
     G --> H[LLM Generation]
     H --> I[Evidence-backed Response]
 ```
+
+**Note:** The Neo4j knowledge graph is currently populated during ingestion but is not yet connected to the agent's question-answering process. Graph-based retrieval is planned future work.
+
 
 ### 4.2 System Architecture Diagram
 
@@ -449,7 +452,7 @@ flowchart TD
     D["**Neo4j** via Graphiti\n─────────────────\nEntity nodes\nRelationship edges\nEpisodic nodes"]
 
     C --> E
-    D --> E
+  
 
     E["**Pydantic AI Agent**\n─────────────────\nvector_search\nhybrid_search\nsearch_by_entity\nget_document\nlist_documents"]
 
@@ -457,6 +460,8 @@ flowchart TD
 
     F["**FastAPI** — api.py\n─────────────────\nPOST /chat\nPOST /chat/stream\nPOST /search/vector\nPOST /search/hybrid\nGET  /documents\nGET  /health"]
 ```
+
+**Note:** The Neo4j knowledge graph is currently populated during document ingestion but is not yet connected to the AI agent for question answering. Graph-based retrieval is planned as future work.
 
 > **Note:** To render the diagram above, open this file in VS Code and press `Ctrl + Shift + V` to open Markdown Preview. Install the **Markdown Preview Mermaid Support** extension if the diagram does not appear.
 
@@ -573,7 +578,8 @@ The pipeline was built and verified for correctness, not throughput. Several sta
 **Follow-up questions inconsistently resolve context**
 During testing, follow-up questions sometimes remained correctly scoped to the paper(s) discussed in the previous response (e.g. "give me more details about the medium composition" correctly returned detail from the paper just discussed). However, when a follow-up question asked about information that was not present in the previously discussed paper, the system occasionally retrieved information from a different paper, instead of indicating that the paper did not contain the requested information. This should be investigated further before the system is relied on for multi-turn conversations.
 
-None of these affect the correctness of current answers, they affect how long ingestion takes and how the system will perform once the library is much larger. A full breakdown with suggested fixes for each item exists separately and should be handed to whoever picks up performance work.
+These issues do not all affect the current retrieval pipeline in the same way. Some are primarily performance and scalability limitations, while the follow-up-context issue can affect answer correctness in specific multi-turn conversations.
+The follow-up context issue should therefore be investigated separately before the system is relied upon for complex multi-turn conversations.
 
 ---
 
