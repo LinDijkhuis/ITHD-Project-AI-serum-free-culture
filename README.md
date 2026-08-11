@@ -68,14 +68,15 @@ The current implementation successfully retrieves and summarises evidence from s
               ▼                       ▼
    PostgreSQL + pgvector          Neo4j
    (Semantic Search)       (Knowledge Graph)
-              │                       │
-              └───────────┬───────────┘
-                          ▼
-                PydanticAI Agent
-                          │
-                          ▼
-              Evidence-Based Answer
+              │                       
+              ▼
+    PydanticAI Agent
+              │
+              ▼
+  Evidence-Based Answer
 ```
+
+**Note:** The Neo4j knowledge graph is currently populated during ingestion but is not yet used by the AI agent during question answering. The current retrieval system uses PostgreSQL for vector, hybrid, and entity-based search.
 
 ## Rationale for Technology choices
 
@@ -86,7 +87,7 @@ Scientific articles often describe the same concept using different terminology.
 Relationships between biological entities, such as cell lines, assays and media components, are stored in a knowledge graph. This preserves scientific context that would otherwise be lost when relying only on semantic search.
 
 ### Why combine these components?
-Using both semantic search and a knowledge graph allows the system to retrieve relevant passages while also maintaining relationships between scientific concepts, resulting in more accurate and explainable answers.
+Vector search is currently used to retrieve relevant passages from the literature, while the knowledge graph stores relationships between scientific entities for future graph-based retrieval. Combining these approaches is intended to allow the system to use both relevant passages and relationships between entities when the graph is integrated into the agent.
 
 ## Technology Overview
 - FastAPI: Provides the API used by the application
@@ -98,7 +99,7 @@ Using both semantic search and a knowledge graph allows the system to retrieve r
 
 ## Prerequisites
 
-- Python 3.11 or higher
+- Python 3.10 or higher
 - LLM provider API key (OpenAI, Ollama, Gemini, etc.)
 - PostgreSQL database (for example, a Neon-hosted PostgreSQL database)
 - Neo4j database (for knowledge graph)
@@ -243,7 +244,7 @@ LLM_CHOICE=gemini-2.5-flash
 
 ### 1. Prepare Your Documents
 
-Add your scientific PDF papers to the `source_papers/` folder. The folder already contains 15 papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion — you do not need to convert PDFs to any other format first.
+Add your scientific PDF papers to the `source_papers/` folder. The folder already contains scientific papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion — you do not need to convert PDFs to any other format first.
 
 ### 2. Run Document Ingestion
 
@@ -375,18 +376,19 @@ curl -X POST "http://localhost:8058/chat/stream" \
 
 ## How It Works
 
-### The Power of Hybrid RAG + Knowledge Graph
+### The Retrieval System
 
 This system combines two complementary approaches:
 
 **Vector Database (PostgreSQL + pgvector)**:
-- **Semantic similarity search across paper chunks:** Finds relevant passages even when the wording differs from your question
-- **Hybrid search:** Combines semantic similarity with keyword matching for broader coverage
+- **Semantic similarity search across paper chunks:** Finds relevant passages even when the wording differs from your question.
+- **Hybrid search:** Combines semantic similarity with keyword matching for broader coverage.
 - **Entity search:** Filters results by specific biomedical entities, such as all chunks mentioning "Lonza" as a supplier.
 
 **Knowledge Graph (Neo4j + Graphiti)**:
--  **Relationship tracking:** Tracks relationships between entities across papers, such as which media formulations and suppliers appear alongside particular cell types or outcomes.
-- **Graph traversal:** for discovering connections between studies
+-  **Relationship tracking:** Extracts and stores relationships between entities across papers, such as cell types, culture conditions, media formulations and suppliers and outcomes.
+- **Current status:** The knowledge graph is populated during ingestion but is not yet used by the AI agent during question answering.
+- **Future use:** Graph-based retrieval could be added to support relationship-based questions and comparisons across papers.
 
 **Intelligent Agent**:
 - **Search strategy selection:** Automatically chooses the most appropriate search strategy for each question.
@@ -435,7 +437,7 @@ ITHD-Project-AI-serum-free-culture/
 │   ├── embedder.py          # Embedding generation (multi-provider)
 │   └── graph_builder.py     # Knowledge graph construction
 ├── sql/                     # Database schema
-├── source_papers/           # Your scientific PDF files (15 papers included)
+├── source_papers/           # Your scientific PDF files (14 papers included)
 ├── tests/                   # Test suite
 └── cli.py                   # Interactive command-line interface
 ```
