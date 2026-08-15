@@ -40,7 +40,7 @@ If the answer isn't in the ingested papers, the system says so. It does not gues
 
 | Term | Meaning |
 |------|---------|
-| RAG (Retrieval-Augmented Generation) | Instead of asking an AI to answer from memory, the system first searches your documents for relevant passages, then asks the AI to answer using only those passages. This is what makes the citations reliable. |
+| RAG (Retrieval-Augmented Generation) | Is an AI framework that retrieves information using search algorithms to query external data, searching within indexed vector databases to feed generative Large Language Models (LLMs). Instead of asking an AI to answer from memory, the system first searches your documents for relevant chunks, then asks the AI to answer using only those chunks, which is what makes the citations reliable.  This architecture connects retrieval to generation by converting queries into mathematical vectors to execute high-dimensional similarity searches, appending the most relevant context directly into the prompt. Combining this evidence with its own language abilities, the LLM acts like a researcher with an open reference book. Generating highly accurate, domain-specific reponses. |
 | Embedding | A numerical representation of a piece of text that lets the computer measure how similar two pieces of text are in meaning, not just in wording. |
 | Vector search | Searching by meaning (using embeddings) rather than by exact keyword match. |
 | Knowledge graph | A network of extracted facts (e.g. "Paper X uses Medium Y") stored so relationships between entities can, in future, be queried directly. |
