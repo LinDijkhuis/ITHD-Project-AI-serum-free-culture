@@ -761,6 +761,7 @@ Current limitations
 - Morphology images are ignored
 - No structured comparison between papers
 - Recommendations cannot yet be generated
+- Inconsistency with follow-up questions
 
 The system therefore functions as an evidence retrieval assistant rather than a scientific recommendation system.
 
