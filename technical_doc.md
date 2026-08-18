@@ -721,8 +721,8 @@ PDFs that consist of scanned images without a text layer (i.e. no embedded text,
 **Author and journal name extraction**
 The PDF parser extracts the title, DOI, and publication year from paper headers. Author names and journal names are not reliably extracted because their position and format vary too much between publishers. These fields may be absent from chunk metadata.
 
-**Chunk position tracking can be wrong for repeated text**
-When locating where a chunk sits in the original document, the system searches for the chunk's text starting from the beginning of the document each time. If a phrase repeats elsewhere in the document, it can return the position of the wrong occurrence. This does not affect chunk *content* or answer quality. Only the recorded start/end character offsets in metadata, which are used for position tracking, not for what the agent reads or cites.
+**Chunk position tracking can be incorrect for repeated text**
+When locating a chunk in the original document, the system searches for the chunk's text from the beginning of the document each time. If the same text appears multiple times, it may find an earlier occurrence rather than the occurrence that belongs to the chunk. This does not affect the content of the chunk or the information available to the agent. It only affects the recorded start and end character offsets in the chunk metadata, which are used to track the chunk's position within the original document.
 
 **Not yet tested at scale, performance has not been optimized**
 The pipeline was built and verified for correctness, not throughput. Several stages will slow down or become bottlenecks as the number of ingested papers grows:
