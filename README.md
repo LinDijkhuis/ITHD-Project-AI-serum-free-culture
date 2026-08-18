@@ -109,9 +109,15 @@ Vector search is currently used to retrieve relevant passages from the literatur
 
 ### Option A: Automated setup (Linux only)
 
-Open a terminal and navigate to the directory containing the file:
+Open a terminal and navigate to the directory where you want to store the project:
+
 ```bash
-cd <path_to_file_location>
+cd <path_to_project_location>
+```
+Clone the repository and enter the project directory:
+```bash
+git clone <repo-url>
+cd ITHD-Project-AI-serum-free-culture
 ```
 
 On Linux, `setup.sh` handles all installation steps in one command:
