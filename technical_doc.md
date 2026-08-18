@@ -707,33 +707,33 @@ Two things sit outside that functional core:
 
 The following limitations are known and may be addressed in future versions.
 
-**Medium composition from tables**
+**Medium composition from tables.**
 Many papers list exact medium ingredients and concentrations in a table within the Methods section. The PDF reader extracts table content as a flat stream of text, which often results in garbled or missing data. When this happens, the agent will explicitly state: *"Medium composition was not fully captured from this paper. It may be in a table that could not be extracted."* It will not guess or fill in values from general 
 knowledge.
 
-**Knowledge graph is built but not wired to the agent**
+**Knowledge graph is built but not wired to the agent.**
 The knowledge graph (Neo4j, via Graphiti) is populated during ingestion, building a network of relationships between cell types, media suppliers, culture conditions, and outcomes. A working search method for the graph already exists (`GraphitiClient.search()` in `agent/graph_utils.py`), but the agent has no tool to call it, so no questions are currently 
 answered using the graph. All agent answers come from vector and hybrid search over PostgreSQL. Connecting the two requires: (1) a wrapper function in `tools.py` (following the pattern of `entity_search_tool`), and (2) a registered `@rag_agent.tool` in `agent.py` with a docstring telling the LLM when to prefer it — relationship-style questions ("which suppliers are used across all MSC papers?") rather than passage-lookup questions, which vector/hybrid search already handle.
 
-**Scanned-image PDFs**
+**Scanned-image PDFs.**
 PDFs that consist of scanned images without a text layer (i.e. no embedded text, only a photo of the page) produce no output. The system requires PDFs with a proper text layer. If a paper produces no chunks after ingestion, this is the most likely cause.
 
-**Author and journal name extraction**
+**Author and journal name extraction.**
 The PDF parser extracts the title, DOI, and publication year from paper headers. Author names and journal names are not reliably extracted because their position and format vary too much between publishers. These fields may be absent from chunk metadata.
 
-**Chunk position tracking can be incorrect for repeated text**
+**Chunk position tracking can be incorrect for repeated text.**
 When locating a chunk in the original document, the system searches for the chunk's text from the beginning of the document each time. If the same text appears multiple times, it may find an earlier occurrence rather than the occurrence that belongs to the chunk. This does not affect the content of the chunk or the information available to the agent. It only affects the recorded start and end character offsets in the chunk metadata, which are used to track the chunk's position within the original document.
 
-**Not yet tested at scale, performance has not been optimized**
+**Not yet tested at scale, performance has not been optimized.**
 The pipeline was built and verified for correctness, not throughput. Several stages will slow down or become bottlenecks as the number of ingested papers grows:
 - Documents are ingested one at a time rather than concurrently, so ingestion time scales linearly with paper count even though most of the work (LLM calls, embedding calls, database writes) could overlap.
 - Oversized document sections are sent to the LLM one piece at a time rather than batched, adding fixed network overhead per call.
 - Chunks are inserted into the database one row at a time rather than in batches.
 - Knowledge graph extraction is slow when run against a local model on the order of minutes per chunk, but drops to seconds per chunk if pointed at a cloud LLM API instead.
-- Ingestion and knowledge-graph building currently run as a single pass, so fast vector data isn't usable until the slow graph step finishes too (the ingestion script already supports `--no-graph` and a graph-only pass to split these, but this isn't the default behavior yet).
+- Ingestion and knowledge-graph building currently run as a single pass, so fast vector data isn't usable until the slow graph step finishes too (the ingestion script already supports `--no-graph` and a graph-only pass to split these, but this isn't the default behaviour yet).
 - Hybrid search combines vector and keyword results with a full outer join, which gets slower as the paper library grows; this affects every query, not just ingestion.
 
-**Follow-up questions inconsistently resolve context**
+**Follow-up questions inconsistently resolve context.**
 During testing, follow-up questions sometimes remained correctly scoped to the paper(s) discussed in the previous response (e.g. "give me more details about the medium composition" correctly returned detail from the paper just discussed). However, when a follow-up question asked about information that was not present in the previously discussed paper, the system occasionally retrieved information from a different paper, instead of indicating that the paper did not contain the requested information. This should be investigated further before the system is relied on for multi-turn conversations.
 
 These issues do not all affect the current retrieval pipeline in the same way. Some are primarily performance and scalability limitations, while the follow-up-context issue can affect answer correctness in specific multi-turn conversations.
@@ -745,7 +745,7 @@ The follow-up context issue should therefore be investigated separately before t
 
 The current implementation successfully demonstrates the technical feasibility of the retrieval pipeline.
 
-Successfully implemented
+Successfully implemented:
 
 - PDF ingestion
 - Automatic chunking
@@ -754,7 +754,7 @@ Successfully implemented
 - Hybrid retrieval
 - Citation-based answers
 
-Current limitations
+Current limitations:
 
 - Tables cannot yet be extracted correctly
 - Figures cannot be analysed
@@ -771,7 +771,7 @@ The system therefore functions as an evidence retrieval assistant rather than a 
 ![alt text](image-8.png)
 
 In the image above the agent was asked "what medium does not contain animal derived components and is completely animal free?". The agent gives the key findings of the paper and the outcomes of the medium on the cells. The sources of which paper the this information comes from was also given by the agent. 
----
+
 ![alt text](image-10.png)
 ![alt text](image-11.png)
 In the image above, the agent was asked "what is in the defined medium?". The agent uses one explicit paper to answer this question. The title and DOI of the paper is given.
@@ -799,7 +799,7 @@ In the image above the agent is being asked "What's the average reported viabili
 - Fact lookup from narrative text: "What doubling time did this paper report for its PBMCs serum-free protocol?" or "What growth factors were included in this serum-free medium?" Anything stated in Methods or Results.
 - Single-paper, single-claim questions: e.g. "Does this paper use xeno-free conditions?" One fact, traceable to one passage.
 - Entity-tagged lookups: e.g. "Which papers mention Lonza as a supplier?" Works via entity search, as long as the term is on the entity list (see below).
-- A question where the answer isn't in any of the papers: when a fact isn't in the retrieved evidence, the agent says so directly instead of guessing. This is an intended behavior, not a bug.
+- A question where the answer isn't in any of the papers: when a fact isn't in the retrieved evidence, the agent says so directly instead of guessing. This is an intended behaviour, not a bug.
 
 ### Questions the agent would not handle well
 
