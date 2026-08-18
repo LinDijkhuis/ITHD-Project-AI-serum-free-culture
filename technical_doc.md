@@ -272,7 +272,7 @@ Record the Neo4j username and password so that they can be added to the project'
 4. Set a password and start the DBMS.
 5. Record the connection details (URI, username, password).
 
-#### 5. Configure environment variables
+**Step 5 — Configure environment variables**
 
 From the project directory, copy `example.env` to `.env` and fill in your values:
 
@@ -337,7 +337,7 @@ LLM_CHOICE=gemini-2.5-flash
 ```
 > **Note:** The LLM provider and embedding provider are configured separately. You can use one provider for the LLM and another for embeddings.
 
-#### 6. Verify the installation
+**Step 6 — Verify the installation**
 
 
 After completing the setup, make sure the following services are available:
