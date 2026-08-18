@@ -10,13 +10,12 @@
 
 ## Before You Start: What Is This Project?
 
-**Why this exists:** Researchers working on serum-free and xeno-free cell culture have to manually dig through dozens of papers to answer basic questions: what medium was used, what viability was reported, which supplier. This project was built to remove that manual search step: ask a question in plain English, get an answer backed by direct citations to the original papers, not the AI's general knowledge.
+**Why this exists:** Researchers working on serum-free and xeno-free cell culture have to manually dig through dozens of papers to answer basic questions: what medium was used, what viability was reported, which supplier. This project was built to remove that manual search step: ask a question in your own words, get an answer backed by direct citations to the original papers, not the AI's general knowledge.
 
 **Status:** The core retrieval system works and has been verified on a small collection of papers. It reads PDFs, searches them by meaning, and keywords, and generates answers with citations. Two things are still in progress: the knowledge graph is built but is not yet used during question answering, and the system has not been evaluated for performance at large scale.
 
 **How it works, in one paragraph:** 
-PDFs are ingested and split into searchable sections. When you ask a question, the system searches those sections for relevant passages first, then asks the AI to answer using only those passages. Which is why it can cite specific papers and DOIs 
-instead of guessing. 
+PDFs are ingested and split into searchable sections. When you ask a question, the system searches those sections for relevant passages first, then asks the AI to answer using only those passages. Which is why it can cite specific papers and DOIs instead of guessing. 
 
 **Example:**
 
@@ -151,15 +150,131 @@ Serum-free cell culture research is scattered across many papers with inconsiste
 - Docker
 - Git
 - A Neon PostgreSQL account (cloud)
+- An API key for your chosen LLM provider (unless using Ollama locally)
+
+### Installation
 
 **Step 1 — Clone the repository**
 
+Open a terminal and navigate to the directory where you want to store the project:
+
+```bash
+cd <path_to_project_location>
+```
+Clone the repository and enter the project directory:
 ```bash
 git clone <repo-url>
 cd ITHD-Project-AI-serum-free-culture
 ```
 
-**Step 2 — Configure environment variables**
+**Step 2 — Choose a setup method**
+
+There are two ways to set up the project:
+- Option A: Automated setup (Linux only). The `setup.sh` script automates most of the installation.
+- Option B: Manual setup. Recommended for Windows and macOS, or when you want to configure each component yourself.
+
+### Option A: Automated setup (Linux only)
+
+From the project directory, run:
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+The script:
+1. Creates a Python virtual environment and installs the required Python packages.
+2. Sets up the PostgreSQL database schema on Neon.
+3. Sets up Neo4j using Docker.
+4. Installs Ollama and pulls the required models:
+    - `nomic-embed-text`
+    - `qwen3:32b` 
+
+
+After the script finishes, activate the virtual environment:
+```bash
+source venv/bin/activate
+```
+Then continue to Step 3 — Configure environment variables below. 
+
+> **Note:** `setup.sh` uses Linux-specific commands such as `sudo apt` and is intended for Ubuntu/Debian-based systems. For Windows or macOS, use the manual setup below.
+
+---
+
+### Option B: Manual setup
+
+#### 1. Set up a Python virtual environment
+
+From the project directory:
+```bash
+python -m venv venv
+```
+Activate the environment:
+```bash
+# On Linux/macOS
+source venv/bin/activate  
+
+# On Windows (Command prompt)
+venv\Scripts\activate     # On Windows (Command prompt)
+
+# Windows (PowerShell)
+venv\Scripts\Activate.ps1
+```
+
+#### 2. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+#### 3. Set up PostgresSQL
+
+The project uses **Neon PostgreSQL** for the application database.
+First, make sure the Neon PostgreSQL database is created and the connection string is available.
+
+Then configure `DATABASE_URL` in your `.env` file as described in Step 5 — Configure environment variables.
+
+After configuring the database connection, run:
+
+```bash
+python apply_schema.py
+```
+This executes `sql/schema.sql` and creates the required tables, indexes, and database functions.
+
+
+**Warning:** `apply_schema.py` drops the existing tables before recreating them. Do not run this command on a database containing data you want to keep.
+
+The vector dimensions in `sql/schema.sql` must match the embedding model that is being used. `text-embedding-3-small`uses 1536 dimensions,  while `nomic-embed-text` uses 768 dimensions. Check the schema on lines 31, 67, and 100 before running `apply_schema.py`.
+
+#### 4. Set up Neo4j
+
+Neo4j is used to store the project's knowledge graph.
+
+#### Option A: Local-AI-Packaged 
+Clone the Local AI Packaged repository:
+ ```bash
+git clone https://github.com/coleam00/local-ai-packaged.git
+cd local-ai-packaged
+ ```
+
+Follow the installation instructions in the repository to start Neo4j using Docker Compose.
+After Neo4j has started, the default connection used by this project is:
+```bash
+ bolt://localhost:7687
+```
+Record the Neo4j username and password so that they can be added to the project's `.env` file.
+
+> **Note:** This is an external repository and its setup instructions may change. If this method causes problems, Neo4j can also be installed directly using the alternative method below. 
+
+#### Option B: Neo4j Desktop
+1. Download and install [Neo4j Desktop](https://neo4j.com/download/)
+2. Create a new project
+3. Create a local DBMS
+4. Set a password and start the DBMS.
+5. Record the connection details (URI, username, password).
+
+#### 5. Configure environment variables
+
+From the project directory, copy `example.env` to `.env` and fill in your values:
 
 Copy `example.env` to `.env` and fill in your values:
 
@@ -168,27 +283,70 @@ Copy `example.env` to `.env` and fill in your values:
 - `LLM_CHOICE` — the large language model you want to use
 - `LLM_API_KEY` — your API key
 
-**Step 3 — Run the setup script**
+A typical OpenAI configuration is:
 
 ```bash
-chmod +x setup.sh
-./setup.sh
+# Database Configuration
+DATABASE_URL=postgresql://username:password@ep-example-12345.us-east-2.aws.neon.tech/neondb
+
+# Neo4j Configuration
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+
+# LLM Provider Configuration (choose one)
+LLM_PROVIDER=openai
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=sk-your-api-key
+LLM_CHOICE=gpt-4.1-mini
+
+# Embedding Configuration
+EMBEDDING_PROVIDER=openai
+EMBEDDING_BASE_URL=https://api.openai.com/v1
+EMBEDDING_API_KEY=sk-your-api-key
+EMBEDDING_MODEL=text-embedding-3-small
+
+# Ingestion Configuration
+INGESTION_LLM_CHOICE=gpt-4.1-nano  # Faster model for processing
+
+# Application Configuration
+APP_ENV=development
+LOG_LEVEL=INFO
+APP_PORT=8058
 ```
 
-This automatically installs:
-
-- Python virtual environment and all dependencies
-- PostgreSQL schema on Neon
-- Neo4j via Docker
-- Ollama with the required models (`nomic-embed-text`, `qwen3:32b`)
-
-**Step 4 — Activate the environment**
-
+For other LLM providers:
 ```bash
-source venv/bin/activate
-```
+# Ollama (Local — no API key needed)
+LLM_PROVIDER=ollama
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_CHOICE=qwen3:32b
 
----
+# OpenRouter
+LLM_PROVIDER=openrouter
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=your-openrouter-key
+LLM_CHOICE=anthropic/claude-3-5-sonnet
+
+# Gemini
+LLM_PROVIDER=gemini
+LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+LLM_API_KEY=your-gemini-key
+LLM_CHOICE=gemini-2.5-flash
+```
+> **Note:** The LLM provider and embedding provider are configured separately. You can use one provider for the LLM and another for embeddings.
+
+#### 6. Verify the installation
+
+
+After completing the setup, make sure the following services are available:
+- The Python virtual environment is activated.
+- The Neon PostgreSQL database is accessible.
+- Neo4j is running and accessible at the configured URI.
+- The selected LLM provider is configured correctly.
+- The selected embedding model is available.
+
 
 ### 2.3 Packages
 
