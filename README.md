@@ -29,7 +29,7 @@ This system includes three main components:
 |---|---|
 | **Document Ingestion Pipeline** | Processes scientific PDF files by detecting paper sections, splitting text into searchable chunks, extracting biomedical entities, and creating vector embeddings and knowledge graph relationships. |
 | **AI Agent Interface** | Searches the processed literature using semantic search, keyword matching, and entity-based lookup, then generates answers with citations. |
-| **Streaming API** | Provides access to the AI agent and search functionality through a FastAPI backend, with real-time response streaming and direct search endpoints. |
+| **Streaming API** | Provides access to the system and search functionality through a FastAPI backend, with real-time response streaming and direct search endpoints. |
 
 ## Current capabilities
 
@@ -244,7 +244,7 @@ LLM_CHOICE=gemini-2.5-flash
 
 ### 1. Prepare Your Documents
 
-Add your scientific PDF papers to the `source_papers/` folder. The folder already contains scientific papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion — you do not need to convert PDFs to any other format first.
+Add your scientific PDF papers to the `source_papers/` folder. The folder already contains scientific papers on serum-free and xeno-free cell culture media. You can add more PDFs at any time and re-run ingestion. The PDFs do not need to convert to any other format first.
 
 ### 2. Run Document Ingestion
 
@@ -383,7 +383,7 @@ This system combines two complementary approaches:
 **Vector Database (PostgreSQL + pgvector)**:
 - **Semantic similarity search across paper chunks:** Finds relevant passages even when the wording differs from your question.
 - **Hybrid search:** Combines semantic similarity with keyword matching for broader coverage.
-- **Entity search:** Filters results by specific biomedical entities, such as all chunks mentioning "Lonza" as a supplier.
+- **Entity search:** Filters results by specific biomedical entities.
 
 **Knowledge Graph (Neo4j + Graphiti)**:
 -  **Relationship tracking:** Extracts and stores relationships between entities across papers, such as cell types, culture conditions, media formulations and suppliers and outcomes.
@@ -399,23 +399,23 @@ This system combines two complementary approaches:
 ### Example Queries
 
 - **Metric lookup**: "What viability percentages were reported for HEK293 cells in chemically defined media?"
-  — the agent primarily uses vector search to find passages reporting that specific measurement
+  — the agent primarily uses vector search to find passages reporting that specific measurement.
 
 - **Entity-targeted**: "Which suppliers were used in xeno-free protocols for neural stem cells?"
-  — uses entity search filtered by cell type and supplier category
+  — uses entity search filtered by cell type and supplier category.
 
 - **Cross-paper comparison**: "Compare doubling times across CHO studies that used FBS-free conditions"
-  — uses hybrid search to gather results from multiple papers for side-by-side comparison
+  — uses hybrid search to gather results from multiple papers for side-by-side comparison.
 
 - **FBS control comparison**: "Find papers that report both FBS and FBS-free viability data for direct comparison"
-  — uses hybrid search to locate studies with matched control data
+  — uses hybrid search to locate studies with matched control data.
 
 ### Why This Architecture Works Well
 
 1. **Complementary Strengths**: Semantic search finds related content regardless of wording. The knowledge graph reveals connections between entities across papers.
 2. **Prevents Numerical Hallucinations**: The agent is instructed never to estimate or infer viability percentages, growth rates, or doubling times. It only reports values stated in the retrieved passages.
-3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section
-4. **Flexible LLM Support**: The system can switch between OpenAI, Ollama, OpenRouter, or Gemini based on user requirements and budget
+3. **Section-Aware Chunking**: The PDF parser preserves the scientific structure of each paper so chunks from the Methods section are not mixed with chunks from the Results section.
+4. **Flexible LLM Support**: The system can switch between OpenAI, Ollama, OpenRouter, or Gemini based on user requirements and budget.
 
 ## Project Structure
 
